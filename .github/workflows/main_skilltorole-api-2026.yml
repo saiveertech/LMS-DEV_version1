@@ -1,4 +1,4 @@
-```yaml
+
 # Docs for the Azure Web Apps Deploy action:
 # https://github.com/Azure/webapps-deploy
 
@@ -72,6 +72,5 @@ jobs:
           app-name: skilltorole-api-2026
           slot-name: Production
           package: ./publish
-```
 
           
