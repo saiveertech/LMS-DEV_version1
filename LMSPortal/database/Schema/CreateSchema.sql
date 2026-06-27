@@ -1,0 +1,5 @@
+IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'LMS')
+BEGIN
+    EXEC('CREATE SCHEMA LMS');
+END
+GO

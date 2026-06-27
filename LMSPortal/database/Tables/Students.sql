@@ -1,0 +1,27 @@
+CREATE TABLE LMS.Students
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+
+    StudentId NVARCHAR(50) NOT NULL UNIQUE,
+
+    FirstName NVARCHAR(100) NOT NULL,
+
+    LastName NVARCHAR(100) NOT NULL,
+
+    Email NVARCHAR(200) NOT NULL UNIQUE,
+
+    PhoneNumber NVARCHAR(50) NULL,
+
+    Password NVARCHAR(MAX) NOT NULL,
+
+    EducationDetails NVARCHAR(MAX) NULL,
+
+    AreaOfInterest NVARCHAR(MAX) NULL,
+
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    CreatedDate DATETIME2 NOT NULL DEFAULT GETDATE(),
+
+    UpdatedDate DATETIME2 NULL
+);
+GO
