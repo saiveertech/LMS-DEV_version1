@@ -18,8 +18,9 @@ public class TrainerController : ControllerBase
     }
 
     [HttpPost("register-trainer")]
-    public async Task<IActionResult> RegisterTrainer(
-        RegisterTrainerRequest request)
+public async Task<IActionResult> RegisterTrainer(RegisterTrainerRequest request)
+{
+    try
     {
         await _repo.RegisterTrainer(request);
 
@@ -29,7 +30,15 @@ public class TrainerController : ControllerBase
             Message = "Trainer Registered Successfully"
         });
     }
-
+    catch (Exception ex)
+    {
+        return StatusCode(500, new
+        {
+            Message = ex.Message,
+            Inner = ex.InnerException?.Message
+        });
+    }
+}
     [HttpGet("get-trainer-details/{trainerId}")]
     public async Task<IActionResult> GetTrainerDetails(
         string trainerId)

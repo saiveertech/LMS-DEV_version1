@@ -1,6 +1,6 @@
-using LMS.Infrastructure.Repositories.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 
 namespace LMS.API.Controllers;
 
@@ -9,11 +9,11 @@ namespace LMS.API.Controllers;
 [Authorize]
 public class DatabaseController : ControllerBase
 {
-    private readonly AuthRepository _repo;
+    private readonly IConfiguration _configuration;
 
-    public DatabaseController(AuthRepository repo)
+    public DatabaseController(IConfiguration configuration)
     {
-        _repo = repo;
+        _configuration = configuration;
     }
 
     [HttpGet("test")]
@@ -21,7 +21,9 @@ public class DatabaseController : ControllerBase
     {
         try
         {
-            using var conn = _repo.GetConnection();
+            using var conn = new SqlConnection(
+                _configuration.GetConnectionString("DefaultConnection"));
+
             conn.Open();
 
             return Ok(new
@@ -30,12 +32,13 @@ public class DatabaseController : ControllerBase
                 Message = "Database connected successfully"
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             return StatusCode(500, new
             {
                 Success = false,
-                Message = "Database connection failed"
+                Message = ex.Message,
+                Details = ex.ToString()
             });
         }
     }
