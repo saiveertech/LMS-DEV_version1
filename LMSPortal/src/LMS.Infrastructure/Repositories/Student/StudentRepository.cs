@@ -24,90 +24,79 @@ private SqlConnection GetConnection()
         _configuration.GetConnectionString("DefaultConnection"));
 }
 
-public async Task RegisterStudent(
-    RegisterStudentRequest request)
+public async Task<object> RegisterStudent(RegisterStudentRequest request)
 {
     using var conn = GetConnection();
 
     await conn.OpenAsync();
 
-    string countSql =
-        "SELECT ISNULL(MAX(Id),0) + 1 FROM LMS.Students";
+    string countSql = "SELECT ISNULL(MAX(Id),0) + 1 FROM LMS.Students";
 
-    using var countCmd =
-        new SqlCommand(countSql, conn);
+    using var countCmd = new SqlCommand(countSql, conn);
 
-    int nextNumber =
-        Convert.ToInt32(
-            await countCmd.ExecuteScalarAsync());
+    int nextNumber = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
 
     string studentId =
-        $"SK{request.FirstName.Substring(0,1).ToUpper()}" +
-        $"{request.LastName.Substring(0,1).ToUpper()}" +
+        $"SK{request.FirstName.Substring(0, 1).ToUpper()}" +
+        $"{request.LastName.Substring(0, 1).ToUpper()}" +
         $"{nextNumber:D3}SD";
 
-    using var cmd =
-        new SqlCommand(
-            "LMS.SP_RegisterStudent",
-            conn);
+    using var cmd = new SqlCommand("LMS.SP_RegisterStudent", conn);
 
-    cmd.CommandType =
-        CommandType.StoredProcedure;
+    cmd.CommandType = CommandType.StoredProcedure;
 
-    cmd.Parameters.AddWithValue(
-        "@StudentId",
-        studentId);
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
+    cmd.Parameters.AddWithValue("@FirstName", request.FirstName);
+    cmd.Parameters.AddWithValue("@LastName", request.LastName);
+    cmd.Parameters.AddWithValue("@Email", request.Email);
+    cmd.Parameters.AddWithValue("@PhoneNumber", request.PhoneNumber);
+    cmd.Parameters.AddWithValue("@Password", BCrypt.Net.BCrypt.HashPassword(request.Password));
+    cmd.Parameters.AddWithValue("@EducationDetails", request.EducationDetails ?? "");
+    cmd.Parameters.AddWithValue("@AreaOfInterest", request.AreaOfInterest ?? "");
 
-    cmd.Parameters.AddWithValue(
-        "@FirstName",
-        request.FirstName);
-
-    cmd.Parameters.AddWithValue(
-        "@LastName",
-        request.LastName);
-
-    cmd.Parameters.AddWithValue(
-        "@Email",
-        request.Email);
-
-    cmd.Parameters.AddWithValue(
-        "@PhoneNumber",
-        request.PhoneNumber);
-
-    cmd.Parameters.AddWithValue(
-        "@Password",
-        BCrypt.Net.BCrypt.HashPassword(
-            request.Password));
-
-    cmd.Parameters.AddWithValue(
-        "@EducationDetails",
-        request.EducationDetails ?? "");
-
-    cmd.Parameters.AddWithValue(
-        "@AreaOfInterest",
-        request.AreaOfInterest ?? "");
-
+    // Save student to database
     await cmd.ExecuteNonQueryAsync();
 
-    await _emailService.SendEmailAsync(
-        request.Email,
-        request.FirstName,
-        "Student Registration Successful",
-        $@"
-        <h2>Welcome {request.FirstName} {request.LastName}</h2>
+    bool emailSent = true;
+    string message = "Student Registered Successfully";
 
-        <p>Your registration was successful.</p>
+    try
+    {
+        await _emailService.SendEmailAsync(
+            request.Email,
+            request.FirstName,
+            "Student Registration Successful",
+            $@"
+            <h2>Welcome {request.FirstName} {request.LastName}</h2>
 
-        <p><b>Student ID:</b> {studentId}</p>
+            <p>Your registration was successful.</p>
 
-        <p>Welcome to SkillToRole LMS.</p>
+            <p><b>Student ID:</b> {studentId}</p>
 
-        <br/>
+            <p>Welcome to SkillToRole LMS.</p>
 
-        <p>Regards,<br/>SkillToRole Team</p>
-        ");
+            <br/>
+
+            <p>Regards,<br/>SkillToRole Team</p>
+            ");
+    }
+    catch (Exception ex)
+    {
+        emailSent = false;
+        message = "Student registered successfully, but email sending failed.";
+
+        // Optional: Log the error
+        Console.WriteLine(ex.ToString());
+    }
+
+    return new
+    {
+        Success = true,
+        StudentId = studentId,
+        EmailSent = emailSent,
+        Message = message
+    };
 }
-
 public async Task<object?> GetStudentById(
     string studentId)
 {

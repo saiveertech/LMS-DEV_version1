@@ -26,84 +26,41 @@ private SqlConnection GetConnection()
         _configuration.GetConnectionString("DefaultConnection"));
 }
 
-public async Task RegisterTrainer(
-    RegisterTrainerRequest request)
+public async Task RegisterTrainer(RegisterTrainerRequest request)
 {
     using var conn = GetConnection();
 
     await conn.OpenAsync();
 
-    string countSql =
-        "SELECT ISNULL(MAX(Id),0) + 1 FROM LMS.Trainers";
+    // Get the next Trainer Number
+    string countSql = @"
+        SELECT ISNULL(MAX(CAST(RIGHT(TrainerId,3) AS INT)),0) + 1
+        FROM LMS.Trainers";
 
-    using var countCmd =
-        new SqlCommand(countSql, conn);
+    using var countCmd = new SqlCommand(countSql, conn);
 
-    int nextNumber =
-        Convert.ToInt32(
-            await countCmd.ExecuteScalarAsync());
+    int nextNumber = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
 
-    string firstInitial =
-        request.FirstName.Substring(0, 1).ToUpper();
+    string firstInitial = request.FirstName.Substring(0, 1).ToUpper();
+    string lastInitial = request.LastName.Substring(0, 1).ToUpper();
 
-    string lastInitial =
-        request.LastName.Substring(0, 1).ToUpper();
+    string trainerId = $"{firstInitial}{lastInitial}TR{nextNumber:D3}";
 
-    string trainerId =
-        $"{firstInitial}{lastInitial}TR{nextNumber:D3}";
+    using var cmd = new SqlCommand("LMS.SP_RegisterTrainer", conn);
 
-    using var cmd =
-        new SqlCommand(
-            "LMS.SP_RegisterTrainer",
-            conn);
+    cmd.CommandType = CommandType.StoredProcedure;
 
-    cmd.CommandType =
-        CommandType.StoredProcedure;
-
-    cmd.Parameters.AddWithValue(
-        "@TrainerId",
-        trainerId);
-
-    cmd.Parameters.AddWithValue(
-        "@FirstName",
-        request.FirstName);
-
-    cmd.Parameters.AddWithValue(
-        "@LastName",
-        request.LastName);
-
-    cmd.Parameters.AddWithValue(
-        "@Email",
-        request.Email);
-
-    cmd.Parameters.AddWithValue(
-        "@PhoneNumber",
-        request.PhoneNumber);
-
-    cmd.Parameters.AddWithValue(
-        "@Password",
-        BCrypt.Net.BCrypt.HashPassword(
-            request.Password));
-
-    cmd.Parameters.AddWithValue(
-        "@ExperienceYears",
-        request.ExperienceYears);
-
-    cmd.Parameters.AddWithValue(
-        "@CurrentCompany",
-        request.CurrentCompany ?? "");
-
-    cmd.Parameters.AddWithValue(
-        "@Designation",
-        request.Designation ?? "");
-
-    cmd.Parameters.AddWithValue(
-        "@Bio",
-        request.Bio ?? "");
-
-    cmd.Parameters.AddWithValue(
-        "@LinkedInUrl",
-        request.LinkedInUrl ?? "");
+    cmd.Parameters.AddWithValue("@TrainerId", trainerId);
+    cmd.Parameters.AddWithValue("@FirstName", request.FirstName);
+    cmd.Parameters.AddWithValue("@LastName", request.LastName);
+    cmd.Parameters.AddWithValue("@Email", request.Email);
+    cmd.Parameters.AddWithValue("@PhoneNumber", request.PhoneNumber);
+    cmd.Parameters.AddWithValue("@Password", BCrypt.Net.BCrypt.HashPassword(request.Password));
+    cmd.Parameters.AddWithValue("@ExperienceYears", request.ExperienceYears);
+    cmd.Parameters.AddWithValue("@CurrentCompany", (object?)request.CurrentCompany ?? DBNull.Value);
+    cmd.Parameters.AddWithValue("@Designation", (object?)request.Designation ?? DBNull.Value);
+    cmd.Parameters.AddWithValue("@Bio", (object?)request.Bio ?? DBNull.Value);
+    cmd.Parameters.AddWithValue("@LinkedInUrl", (object?)request.LinkedInUrl ?? DBNull.Value);
 
     await cmd.ExecuteNonQueryAsync();
 
@@ -116,23 +73,17 @@ public async Task RegisterTrainer(
 
         <p>Your Trainer registration was successful.</p>
 
-        <p>
-            <b>Trainer ID:</b> {trainerId}
-        </p>
+        <p><b>Trainer ID:</b> {trainerId}</p>
 
-        <p>
-            Welcome to SkillToRole LMS.
-        </p>
+        <p>Welcome to SkillToRole LMS.</p>
 
         <br/>
 
         <p>
             Regards,<br/>
             SkillToRole Team
-        </p>
-        ");
+        </p>");
 }
-
 public async Task<object?> GetTrainerById(
     string trainerId)
 {
