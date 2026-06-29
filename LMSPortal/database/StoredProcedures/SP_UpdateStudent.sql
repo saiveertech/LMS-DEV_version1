@@ -1,27 +1,25 @@
-CREATE PROCEDURE LMS.SP_UpdateStudent
+ALTER PROCEDURE LMS.SP_UpdateStudent
 (
-@StudentId NVARCHAR(50),
-@FirstName NVARCHAR(100),
-@LastName NVARCHAR(100),
-@Email NVARCHAR(200),
-@PhoneNumber NVARCHAR(50),
-@EducationDetails NVARCHAR(MAX),
-@AreaOfInterest NVARCHAR(MAX)
+    @StudentId NVARCHAR(50),
+    @FirstName NVARCHAR(100) = NULL,
+    @LastName NVARCHAR(100) = NULL,
+    @Email NVARCHAR(200) = NULL,
+    @PhoneNumber NVARCHAR(50) = NULL,
+    @EducationDetails NVARCHAR(MAX) = NULL,
+    @AreaOfInterest NVARCHAR(MAX) = NULL
 )
 AS
 BEGIN
+    SET NOCOUNT ON;
 
-
-UPDATE LMS.Students
-SET
-    FirstName = @FirstName,
-    LastName = @LastName,
-    Email = @Email,
-    PhoneNumber = @PhoneNumber,
-    EducationDetails = @EducationDetails,
-    AreaOfInterest = @AreaOfInterest
-WHERE StudentId = @StudentId
-
-
+    UPDATE LMS.Students
+    SET
+        FirstName = ISNULL(@FirstName, FirstName),
+        LastName = ISNULL(@LastName, LastName),
+        Email = ISNULL(@Email, Email),
+        PhoneNumber = ISNULL(@PhoneNumber, PhoneNumber),
+        EducationDetails = ISNULL(@EducationDetails, EducationDetails),
+        AreaOfInterest = ISNULL(@AreaOfInterest, AreaOfInterest)
+    WHERE StudentId = @StudentId;
 END
 GO

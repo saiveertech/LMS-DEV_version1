@@ -132,60 +132,72 @@ public async Task<bool> UpdateTrainer(
 {
     using var conn = GetConnection();
 
-    using var cmd =
-        new SqlCommand(
-            "LMS.SP_UpdateTrainer",
-            conn);
+    using var cmd = new SqlCommand(
+        "LMS.SP_UpdateTrainer",
+        conn);
 
-    cmd.CommandType =
-        CommandType.StoredProcedure;
+    cmd.CommandType = CommandType.StoredProcedure;
 
-    cmd.Parameters.AddWithValue(
-        "@TrainerId",
-        trainerId);
+    cmd.Parameters.AddWithValue("@TrainerId", trainerId);
 
     cmd.Parameters.AddWithValue(
         "@FirstName",
-        (object?)request.FirstName ?? DBNull.Value);
+        string.IsNullOrWhiteSpace(request.FirstName)
+            ? DBNull.Value
+            : request.FirstName);
 
     cmd.Parameters.AddWithValue(
         "@LastName",
-        (object?)request.LastName ?? DBNull.Value);
+        string.IsNullOrWhiteSpace(request.LastName)
+            ? DBNull.Value
+            : request.LastName);
 
     cmd.Parameters.AddWithValue(
         "@Email",
-        (object?)request.Email ?? DBNull.Value);
+        string.IsNullOrWhiteSpace(request.Email)
+            ? DBNull.Value
+            : request.Email);
 
     cmd.Parameters.AddWithValue(
         "@PhoneNumber",
-        (object?)request.PhoneNumber ?? DBNull.Value);
+        string.IsNullOrWhiteSpace(request.PhoneNumber)
+            ? DBNull.Value
+            : request.PhoneNumber);
 
     cmd.Parameters.AddWithValue(
         "@ExperienceYears",
-        (object?)request.ExperienceYears ?? DBNull.Value);
+        request.ExperienceYears.HasValue
+            ? request.ExperienceYears.Value
+            : DBNull.Value);
 
     cmd.Parameters.AddWithValue(
         "@CurrentCompany",
-        (object?)request.CurrentCompany ?? DBNull.Value);
+        string.IsNullOrWhiteSpace(request.CurrentCompany)
+            ? DBNull.Value
+            : request.CurrentCompany);
 
     cmd.Parameters.AddWithValue(
         "@Designation",
-        (object?)request.Designation ?? DBNull.Value);
+        string.IsNullOrWhiteSpace(request.Designation)
+            ? DBNull.Value
+            : request.Designation);
 
     cmd.Parameters.AddWithValue(
         "@Bio",
-        (object?)request.Bio ?? DBNull.Value);
+        string.IsNullOrWhiteSpace(request.Bio)
+            ? DBNull.Value
+            : request.Bio);
 
     cmd.Parameters.AddWithValue(
         "@LinkedInUrl",
-        (object?)request.LinkedInUrl ?? DBNull.Value);
+        string.IsNullOrWhiteSpace(request.LinkedInUrl)
+            ? DBNull.Value
+            : request.LinkedInUrl);
 
     await conn.OpenAsync();
 
-    int rows =
-        await cmd.ExecuteNonQueryAsync();
+    int rows = await cmd.ExecuteNonQueryAsync();
 
     return rows > 0;
 }
-
 }
