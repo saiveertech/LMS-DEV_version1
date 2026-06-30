@@ -1,6 +1,6 @@
-namespace LMS.Application.Features.Auth.DTOs;
+namespace LMS.Application.Features.Admin.DTOs;
 
-public class RegisterStudentRequest
+public class RegisterAdminRequest
 {
     public string FirstName { get; set; } = string.Empty;
 
@@ -12,16 +12,26 @@ public class RegisterStudentRequest
 
     public string Password { get; set; } = string.Empty;
 
-    public string EducationDetails { get; set; } = string.Empty;
+    public int? ExperienceYears { get; set; }
 
-    public string AreaOfInterest { get; set; } = string.Empty;
+    public string? Skills { get; set; }
+
+    public string? Bio { get; set; }
 }
-public class UpdateStudentRequest
+
+public class UpdateAdminRequest
 {
     public string? FirstName { get; set; }
+
     public string? LastName { get; set; }
+
     public string? Email { get; set; }
+
     public string? PhoneNumber { get; set; }
-    public string? EducationDetails { get; set; }
-    public string? AreaOfInterest { get; set; }
+
+    public int? ExperienceYears { get; set; }
+
+    public string? Skills { get; set; }
+
+    public string? Bio { get; set; }
 }

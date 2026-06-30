@@ -1,6 +1,10 @@
 
+using LMS.Application.Features.Auth.Services.Admin;
+using LMS.Application.Features.Auth.Services.Student;
+using LMS.Application.Features.Auth.Services.Trainer;
 using LMS.Infrastructure.Authentication;
 using LMS.Infrastructure.Email;
+using LMS.Infrastructure.Repositories.Admin;
 using LMS.Infrastructure.Repositories.Auth;
 using LMS.Infrastructure.Repositories.Student;
 using LMS.Infrastructure.Repositories.Trainer;
@@ -66,6 +70,15 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<AuthRepository>();
 builder.Services.AddScoped<StudentRepository>();
 builder.Services.AddScoped<TrainerRepository>();
+builder.Services.AddScoped<AdminRepository>();
+
+builder.Services.AddScoped<IAdminRepository, AdminRepository>();
+builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+builder.Services.AddScoped<ITrainerRepository, TrainerRepository>();
+
+builder.Services.AddScoped<AdminService>();
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<ITrainerService, TrainerService>();
 
 builder.Services.Configure<BrevoSettings>(
     builder.Configuration.GetSection("BrevoSettings"));

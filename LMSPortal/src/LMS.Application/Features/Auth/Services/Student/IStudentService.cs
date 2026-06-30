@@ -1,0 +1,15 @@
+using LMS.Application.Common;
+using LMS.Application.Features.Auth.DTOs;
+
+namespace LMS.Application.Features.Auth.Services.Student;
+
+public interface IStudentService
+{
+    Task<ServiceResponse> RegisterStudent(RegisterStudentRequest request);
+
+    Task<object?> GetStudentById(string studentId);
+
+    Task<ServiceResponse> UpdateStudent(
+        string studentId,
+        UpdateStudentRequest request);
+}

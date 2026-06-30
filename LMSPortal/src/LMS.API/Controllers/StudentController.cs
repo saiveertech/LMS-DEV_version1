@@ -1,5 +1,5 @@
 using LMS.Application.Features.Auth.DTOs;
-using LMS.Infrastructure.Repositories.Student;
+using LMS.Application.Features.Auth.Services.Student;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,58 +8,74 @@ namespace LMS.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[Tags("Student")]
 public class StudentController : ControllerBase
 {
-    private readonly StudentRepository _repo;
+    private readonly IStudentService _service;
 
-    public StudentController(StudentRepository repo)
+    public StudentController(IStudentService service)
     {
-        _repo = repo;
+        _service = service;
     }
 
     [HttpPost("register-student")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RegisterStudent(
         RegisterStudentRequest request)
     {
-        await _repo.RegisterStudent(request);
+        var result = await _service.RegisterStudent(request);
 
-        return Ok(new
-        {
-            Success = true,
-            Message = "Student Registered Successfully"
-        });
+        if (!result.Success)
+            return BadRequest(result);
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            result);
     }
 
     [HttpGet("get-student-details/{studentId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetStudentDetails(
         string studentId)
     {
         var result =
-            await _repo.GetStudentById(studentId);
+            await _service.GetStudentById(studentId);
 
         if (result == null)
-            return NotFound();
+        {
+            return NotFound(new
+            {
+                Success = false,
+                Message = "Student Not Found."
+            });
+        }
 
         return Ok(result);
     }
 
     [HttpPut("update-student-details/{studentId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateStudentDetails(
         string studentId,
-        RegisterStudentRequest request)
+        UpdateStudentRequest request)
     {
         var result =
-            await _repo.UpdateStudent(
+            await _service.UpdateStudent(
                 studentId,
                 request);
 
-        if (!result)
-            return NotFound();
-
-        return Ok(new
+        if (!result.Success)
         {
-            Success = true,
-            Message = "Student Updated Successfully"
-        });
+            if (result.Message == "Student Not Found.")
+                return NotFound(result);
+
+            return BadRequest(result);
+        }
+
+        return Ok(result);
     }
 }

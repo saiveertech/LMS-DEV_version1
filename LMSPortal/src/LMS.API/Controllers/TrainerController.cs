@@ -1,5 +1,5 @@
 using LMS.Application.Features.Auth.DTOs;
-using LMS.Infrastructure.Repositories.Trainer;
+using LMS.Application.Features.Auth.Services.Trainer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,64 +8,83 @@ namespace LMS.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[Tags("Trainer")]
 public class TrainerController : ControllerBase
 {
-    private readonly TrainerRepository _repo;
+    private readonly ITrainerService _service;
 
-    public TrainerController(TrainerRepository repo)
+    public TrainerController(ITrainerService service)
     {
-        _repo = repo;
+        _service = service;
     }
 
+    /// <summary>
+    /// Register Trainer
+    /// </summary>
     [HttpPost("register-trainer")]
-public async Task<IActionResult> RegisterTrainer(RegisterTrainerRequest request)
-{
-    try
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RegisterTrainer(
+        RegisterTrainerRequest request)
     {
-        await _repo.RegisterTrainer(request);
+        var result = await _service.RegisterTrainer(request);
 
-        return Ok(new
-        {
-            Success = true,
-            Message = "Trainer Registered Successfully"
-        });
+        if (!result.Success)
+            return BadRequest(result);
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            result);
     }
-    catch (Exception ex)
-    {
-        return StatusCode(500, new
-        {
-            Message = ex.Message,
-            Inner = ex.InnerException?.Message
-        });
-    }
-}
+
+    /// <summary>
+    /// Get Trainer Details
+    /// </summary>
     [HttpGet("get-trainer-details/{trainerId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetTrainerDetails(
         string trainerId)
     {
-        var result =
-            await _repo.GetTrainerById(trainerId);
+        var result = await _service.GetTrainerById(trainerId);
 
         if (result == null)
-            return NotFound();
+        {
+            return NotFound(new
+            {
+                Success = false,
+                Message = "Trainer Not Found."
+            });
+        }
 
         return Ok(result);
     }
 
-   [HttpPut("update-trainer-details/{trainerId}")]
-public async Task<IActionResult> UpdateTrainerDetails(
-    string trainerId,
-    [FromBody] UpdateTrainerRequest request)
-{
-    var result = await _repo.UpdateTrainer(trainerId, request);
-
-    if (!result)
-        return NotFound();
-
-    return Ok(new
+    /// <summary>
+    /// Update Trainer
+    /// </summary>
+    [HttpPut("update-trainer-details/{trainerId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateTrainer(
+        string trainerId,
+        UpdateTrainerRequest request)
     {
-        Success = true,
-        Message = "Trainer Updated Successfully"
-    });
-}
+        var result = await _service.UpdateTrainer(
+            trainerId,
+            request);
+
+        if (!result.Success)
+        {
+            if (result.Message == "Trainer Not Found.")
+            {
+                return NotFound(result);
+            }
+
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
 }

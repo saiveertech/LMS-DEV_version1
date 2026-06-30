@@ -1,12 +1,13 @@
 using System.Data;
 using LMS.Application.Features.Auth.DTOs;
+using LMS.Application.Features.Auth.Services.Student;
 using LMS.Infrastructure.Email;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 
 namespace LMS.Infrastructure.Repositories.Student;
 
-public class StudentRepository
+public class StudentRepository : IStudentRepository
 {
 private readonly IConfiguration _configuration;
 private readonly EmailService _emailService;
@@ -139,53 +140,61 @@ public async Task<object?> GetStudentById(
 
 public async Task<bool> UpdateStudent(
     string studentId,
-    RegisterStudentRequest request)
+    UpdateStudentRequest request)
 {
     using var conn = GetConnection();
 
-    using var cmd =
-        new SqlCommand(
-            "LMS.SP_UpdateStudent",
-            conn);
+    using var cmd = new SqlCommand(
+        "LMS.SP_UpdateStudent",
+        conn);
 
-    cmd.CommandType =
-        CommandType.StoredProcedure;
+    cmd.CommandType = CommandType.StoredProcedure;
 
-    cmd.Parameters.AddWithValue(
-        "@StudentId",
-        studentId);
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
 
     cmd.Parameters.AddWithValue(
         "@FirstName",
-        request.FirstName);
+        string.IsNullOrWhiteSpace(request.FirstName)
+            ? DBNull.Value
+            : request.FirstName);
 
     cmd.Parameters.AddWithValue(
         "@LastName",
-        request.LastName);
+        string.IsNullOrWhiteSpace(request.LastName)
+            ? DBNull.Value
+            : request.LastName);
 
     cmd.Parameters.AddWithValue(
         "@Email",
-        request.Email);
+        string.IsNullOrWhiteSpace(request.Email)
+            ? DBNull.Value
+            : request.Email);
 
     cmd.Parameters.AddWithValue(
         "@PhoneNumber",
-        request.PhoneNumber);
+        string.IsNullOrWhiteSpace(request.PhoneNumber)
+            ? DBNull.Value
+            : request.PhoneNumber);
 
     cmd.Parameters.AddWithValue(
         "@EducationDetails",
-        request.EducationDetails ?? "");
+        string.IsNullOrWhiteSpace(request.EducationDetails)
+            ? DBNull.Value
+            : request.EducationDetails);
 
     cmd.Parameters.AddWithValue(
         "@AreaOfInterest",
-        request.AreaOfInterest ?? "");
+        string.IsNullOrWhiteSpace(request.AreaOfInterest)
+            ? DBNull.Value
+            : request.AreaOfInterest);
 
     await conn.OpenAsync();
 
-    int rows =
-        await cmd.ExecuteNonQueryAsync();
+    var result = await cmd.ExecuteScalarAsync();
+
+    int rows = Convert.ToInt32(result);
 
     return rows > 0;
 }
-
 
 }
