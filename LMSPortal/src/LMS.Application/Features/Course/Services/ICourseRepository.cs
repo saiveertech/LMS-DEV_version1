@@ -11,5 +11,11 @@ public interface ICourseRepository
         string createdBy,
         string createdByRole);
 
-    Task<object?> GetCourseById(int courseId);
+    Task<object?> GetCourseById(int? courseId = null);
+
+    Task<bool> UpdateCourse(
+        int courseId,
+        UpdateCourseRequest request,
+        string? introVideoUrl,
+        string? courseIconUrl);
 }

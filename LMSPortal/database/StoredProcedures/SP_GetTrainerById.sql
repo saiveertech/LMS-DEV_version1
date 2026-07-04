@@ -1,15 +1,16 @@
-CREATE PROCEDURE LMS.SP_GetTrainerById
+ALTER PROCEDURE LMS.SP_GetTrainerById
 (
-@TrainerId NVARCHAR(50)
+@TrainerId NVARCHAR(50) = NULL
 )
 AS
 BEGIN
 
+SET NOCOUNT ON;
 
 SELECT *
 FROM LMS.Trainers
-WHERE TrainerId = @TrainerId
-
+WHERE (@TrainerId IS NULL OR TrainerId = @TrainerId)
+ORDER BY CreatedDate DESC
 
 END
 GO

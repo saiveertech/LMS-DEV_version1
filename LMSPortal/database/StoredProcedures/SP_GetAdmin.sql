@@ -1,6 +1,6 @@
-CREATE PROCEDURE LMS.SP_GetAdminById
+ALTER PROCEDURE LMS.SP_GetAdminById
 (
-    @AdminId NVARCHAR(50)
+    @AdminId NVARCHAR(50) = NULL
 )
 AS
 BEGIN
@@ -17,6 +17,7 @@ BEGIN
         Bio,
         CreatedDate
     FROM LMS.Admin
-    WHERE AdminId=@AdminId;
+    WHERE (@AdminId IS NULL OR AdminId = @AdminId)
+    ORDER BY CreatedDate DESC;
 END
 GO

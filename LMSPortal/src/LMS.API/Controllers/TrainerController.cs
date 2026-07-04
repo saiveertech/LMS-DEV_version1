@@ -40,15 +40,15 @@ public class TrainerController : ControllerBase
     /// <summary>
     /// Get Trainer Details
     /// </summary>
-    [HttpGet("get-trainer-details/{trainerId}")]
+    [HttpGet("get-trainer-details/{trainerId?}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetTrainerDetails(
-        string trainerId)
+        string? trainerId)
     {
         var result = await _service.GetTrainerById(trainerId);
 
-        if (result == null)
+        if (trainerId != null && result == null)
         {
             return NotFound(new
             {

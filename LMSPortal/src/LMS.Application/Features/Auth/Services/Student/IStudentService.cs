@@ -7,7 +7,7 @@ public interface IStudentService
 {
     Task<ServiceResponse> RegisterStudent(RegisterStudentRequest request);
 
-    Task<object?> GetStudentById(string studentId);
+    Task<object?> GetStudentById(string? studentId = null);
 
     Task<ServiceResponse> UpdateStudent(
         string studentId,

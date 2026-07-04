@@ -143,7 +143,7 @@ public class AdminService : IAdminService
         }
     }
 
-    public async Task<object?> GetAdminById(string adminId)
+    public async Task<object?> GetAdminById(string? adminId = null)
     {
         return await _repo.GetAdminById(adminId);
     }

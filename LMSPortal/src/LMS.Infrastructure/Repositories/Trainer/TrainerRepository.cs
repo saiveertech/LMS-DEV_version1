@@ -138,7 +138,7 @@ public class TrainerRepository : ITrainerRepository
     //=========================================================
 
     public async Task<object?> GetTrainerById(
-        string trainerId)
+        string? trainerId = null)
     {
         using var conn = GetConnection();
 
@@ -152,16 +152,18 @@ public class TrainerRepository : ITrainerRepository
 
         cmd.Parameters.AddWithValue(
             "@TrainerId",
-            trainerId);
+            (object?)trainerId ?? DBNull.Value);
 
         await conn.OpenAsync();
 
         using var reader =
             await cmd.ExecuteReaderAsync();
 
-        if (await reader.ReadAsync())
+        var trainers = new List<object>();
+
+        while (await reader.ReadAsync())
         {
-            return new
+            trainers.Add(new
             {
                 TrainerId = reader["TrainerId"],
                 FirstName = reader["FirstName"],
@@ -174,10 +176,13 @@ public class TrainerRepository : ITrainerRepository
                 Bio = reader["Bio"],
                 LinkedInUrl = reader["LinkedInUrl"],
                 CreatedDate = reader["CreatedDate"]
-            };
+            });
         }
 
-        return null;
+        if (trainerId != null)
+            return trainers.Count > 0 ? trainers[0] : null;
+
+        return trainers;
     }
 
     //=========================================================

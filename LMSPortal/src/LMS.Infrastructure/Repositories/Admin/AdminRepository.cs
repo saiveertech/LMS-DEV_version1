@@ -135,7 +135,7 @@ public class AdminRepository : IAdminRepository
         };
     }
 
-    public async Task<object?> GetAdminById(string adminId)
+    public async Task<object?> GetAdminById(string? adminId = null)
 {
     using var conn = GetConnection();
 
@@ -149,16 +149,18 @@ public class AdminRepository : IAdminRepository
 
     cmd.Parameters.AddWithValue(
         "@AdminId",
-        adminId);
+        (object?)adminId ?? DBNull.Value);
 
     await conn.OpenAsync();
 
     using var reader =
         await cmd.ExecuteReaderAsync();
 
-    if(await reader.ReadAsync())
+    var admins = new List<object>();
+
+    while(await reader.ReadAsync())
     {
-        return new
+        admins.Add(new
         {
             AdminId=reader["AdminId"],
             FirstName=reader["FirstName"],
@@ -169,10 +171,13 @@ public class AdminRepository : IAdminRepository
             Skills=reader["Skills"],
             Bio=reader["Bio"],
             CreatedDate=reader["CreatedDate"]
-        };
+        });
     }
 
-    return null;
+    if (adminId != null)
+        return admins.Count > 0 ? admins[0] : null;
+
+    return admins;
 }
 
 public async Task<bool> UpdateAdmin(

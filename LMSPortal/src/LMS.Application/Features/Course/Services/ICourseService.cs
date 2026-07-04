@@ -10,5 +10,9 @@ public interface ICourseService
         string createdBy,
         string createdByRole);
 
-    Task<object?> GetCourseById(int courseId);
+    Task<object?> GetCourseById(int? courseId = null);
+
+    Task<ServiceResponse> UpdateCourse(
+        int courseId,
+        UpdateCourseRequest request);
 }

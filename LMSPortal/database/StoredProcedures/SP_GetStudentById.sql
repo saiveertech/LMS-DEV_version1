@@ -1,15 +1,16 @@
-CREATE PROCEDURE LMS.SP_GetStudentById
+ALTER PROCEDURE LMS.SP_GetStudentById
 (
-@StudentId NVARCHAR(50)
+@StudentId NVARCHAR(50) = NULL
 )
 AS
 BEGIN
 
+SET NOCOUNT ON;
 
 SELECT *
 FROM LMS.Students
-WHERE StudentId = @StudentId
-
+WHERE (@StudentId IS NULL OR StudentId = @StudentId)
+ORDER BY CreatedDate DESC
 
 END
 GO

@@ -34,16 +34,16 @@ public class StudentController : ControllerBase
             result);
     }
 
-    [HttpGet("get-student-details/{studentId}")]
+    [HttpGet("get-student-details/{studentId?}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetStudentDetails(
-        string studentId)
+        string? studentId)
     {
         var result =
             await _service.GetStudentById(studentId);
 
-        if (result == null)
+        if (studentId != null && result == null)
         {
             return NotFound(new
             {

@@ -45,6 +45,7 @@ public class AuthController : ControllerBase
                 Success = true,
                 Message = "Login successful",
                 Token = token.Value,
+                Id = result.Id,
                 Role = result.Role,
                 Email = result.Email,
                 ExpiresAt = token.ExpiresAt

@@ -185,7 +185,7 @@ public class TrainerService : ITrainerService
     }
 
     public async Task<object?> GetTrainerById(
-        string trainerId)
+        string? trainerId = null)
     {
         return await _repo.GetTrainerById(trainerId);
     }

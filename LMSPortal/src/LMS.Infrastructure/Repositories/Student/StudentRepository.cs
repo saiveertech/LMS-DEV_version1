@@ -96,7 +96,7 @@ public async Task<object> RegisterStudent(RegisterStudentRequest request)
     };
 }
 public async Task<object?> GetStudentById(
-    string studentId)
+    string? studentId = null)
 {
     using var conn = GetConnection();
 
@@ -110,16 +110,18 @@ public async Task<object?> GetStudentById(
 
     cmd.Parameters.AddWithValue(
         "@StudentId",
-        studentId);
+        (object?)studentId ?? DBNull.Value);
 
     await conn.OpenAsync();
 
     using var reader =
         await cmd.ExecuteReaderAsync();
 
-    if (await reader.ReadAsync())
+    var students = new List<object>();
+
+    while (await reader.ReadAsync())
     {
-        return new
+        students.Add(new
         {
             StudentId = reader["StudentId"],
             FirstName = reader["FirstName"],
@@ -129,10 +131,13 @@ public async Task<object?> GetStudentById(
             EducationDetails = reader["EducationDetails"],
             AreaOfInterest = reader["AreaOfInterest"],
             CreatedDate = reader["CreatedDate"]
-        };
+        });
     }
 
-    return null;
+    if (studentId != null)
+        return students.Count > 0 ? students[0] : null;
+
+    return students;
 }
 
 public async Task<bool> UpdateStudent(

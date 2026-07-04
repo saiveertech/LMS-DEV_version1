@@ -27,14 +27,14 @@ public class AdminController : ControllerBase
         return StatusCode(StatusCodes.Status201Created, result);
     }
 
-    [HttpGet("get-admin-details/{adminId}")]
+    [HttpGet("get-admin-details/{adminId?}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetAdmin(string adminId)
+    public async Task<IActionResult> GetAdmin(string? adminId)
     {
         var result = await _service.GetAdminById(adminId);
 
-        if (result == null)
+        if (adminId != null && result == null)
         {
             return NotFound(new { Message = "Admin Not Found" });
         }

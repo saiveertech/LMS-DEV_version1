@@ -9,7 +9,7 @@ public interface IAdminService
         RegisterAdminRequest request);
 
     Task<object?> GetAdminById(
-        string adminId);
+        string? adminId = null);
 
     Task<ServiceResponse> UpdateAdmin(
         string adminId,
@@ -22,7 +22,7 @@ public interface IAdminRepository
         RegisterAdminRequest request);
 
     Task<object?> GetAdminById(
-        string adminId);
+        string? adminId = null);
 
     Task<bool> UpdateAdmin(
         string adminId,

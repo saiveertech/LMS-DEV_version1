@@ -45,20 +45,44 @@ public class CourseController : ControllerBase
             result);
     }
 
-    [HttpGet("get-course-details/{courseId:int}")]
+    [HttpGet("get-course-details/{courseId:int?}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCourseDetails(int courseId)
+    public async Task<IActionResult> GetCourseDetails(int? courseId)
     {
         var result = await _service.GetCourseById(courseId);
 
-        if (result == null)
+        if (courseId.HasValue && result == null)
         {
             return NotFound(new
             {
                 Success = false,
                 Message = "Course Not Found."
             });
+        }
+
+        return Ok(result);
+    }
+
+    [HttpPut("update-course-details/{courseId:int}")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(524_288_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 524_288_000)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateCourseDetails(
+        int courseId,
+        [FromForm] UpdateCourseRequest request)
+    {
+        var result = await _service.UpdateCourse(courseId, request);
+
+        if (!result.Success)
+        {
+            if (result.Message == "Course Not Found.")
+                return NotFound(result);
+
+            return BadRequest(result);
         }
 
         return Ok(result);

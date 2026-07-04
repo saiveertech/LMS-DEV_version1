@@ -7,7 +7,7 @@ public interface ITrainerService
 {
     Task<ServiceResponse> RegisterTrainer(RegisterTrainerRequest request);
 
-    Task<object?> GetTrainerById(string trainerId);
+    Task<object?> GetTrainerById(string? trainerId = null);
 
     Task<ServiceResponse> UpdateTrainer(
         string trainerId,
@@ -18,7 +18,7 @@ public interface ITrainerRepository
 {
     Task<object> RegisterTrainer(RegisterTrainerRequest request);
 
-    Task<object?> GetTrainerById(string trainerId);
+    Task<object?> GetTrainerById(string? trainerId = null);
 
     Task<bool> UpdateTrainer(
         string trainerId,

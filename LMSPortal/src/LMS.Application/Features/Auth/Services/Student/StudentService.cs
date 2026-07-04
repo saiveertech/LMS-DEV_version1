@@ -146,7 +146,7 @@ public class StudentService : IStudentService
     //=========================================
 
     public async Task<object?> GetStudentById(
-        string studentId)
+        string? studentId = null)
     {
         return await _repo.GetStudentById(studentId);
     }
