@@ -1,6 +1,5 @@
 CREATE PROCEDURE LMS.SP_RegisterAdmin
 (
-    @AdminId NVARCHAR(50),
     @FirstName NVARCHAR(100),
     @LastName NVARCHAR(100),
     @Email NVARCHAR(200),
@@ -8,11 +7,15 @@ CREATE PROCEDURE LMS.SP_RegisterAdmin
     @Password NVARCHAR(MAX),
     @ExperienceYears INT,
     @Skills NVARCHAR(MAX),
-    @Bio NVARCHAR(MAX)
+    @Bio NVARCHAR(MAX),
+    @AdminId NVARCHAR(50) OUTPUT
 )
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    DECLARE @Placeholder NVARCHAR(50) = CONVERT(NVARCHAR(50), NEWID());
+    DECLARE @NewId INT;
 
     INSERT INTO LMS.Admin
     (
@@ -28,7 +31,7 @@ BEGIN
     )
     VALUES
     (
-        @AdminId,
+        @Placeholder,
         @FirstName,
         @LastName,
         @Email,
@@ -38,5 +41,18 @@ BEGIN
         @Skills,
         @Bio
     );
+
+    SET @NewId = CAST(SCOPE_IDENTITY() AS INT);
+
+    SET @AdminId =
+        'SK' +
+        UPPER(LEFT(@FirstName, 1)) +
+        UPPER(LEFT(@LastName, 1)) +
+        RIGHT('000' + CAST(@NewId AS VARCHAR(10)), 3) +
+        'AD';
+
+    UPDATE LMS.Admin
+    SET AdminId = @AdminId
+    WHERE AdminId = @Placeholder;
 END
 GO

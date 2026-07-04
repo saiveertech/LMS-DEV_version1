@@ -37,20 +37,6 @@ public class TrainerRepository : ITrainerRepository
 
         await conn.OpenAsync();
 
-        string sql =
-            "SELECT ISNULL(MAX(Id),0)+1 FROM LMS.Trainers";
-
-        using var countCmd =
-            new SqlCommand(sql, conn);
-
-        int nextNumber =
-            Convert.ToInt32(await countCmd.ExecuteScalarAsync());
-
-        string trainerId =
-            $"SK{request.FirstName.Substring(0,1).ToUpper()}" +
-            $"{request.LastName.Substring(0,1).ToUpper()}" +
-            $"{nextNumber:D3}TR";
-
         using var cmd =
             new SqlCommand(
                 "LMS.SP_RegisterTrainer",
@@ -59,7 +45,13 @@ public class TrainerRepository : ITrainerRepository
         cmd.CommandType =
             CommandType.StoredProcedure;
 
-        cmd.Parameters.AddWithValue("@TrainerId", trainerId);
+        var trainerIdParam =
+            new SqlParameter("@TrainerId", SqlDbType.NVarChar, 50)
+            {
+                Direction = ParameterDirection.Output
+            };
+
+        cmd.Parameters.Add(trainerIdParam);
         cmd.Parameters.AddWithValue("@FirstName", request.FirstName);
         cmd.Parameters.AddWithValue("@LastName", request.LastName);
         cmd.Parameters.AddWithValue("@Email", request.Email);
@@ -89,6 +81,9 @@ public class TrainerRepository : ITrainerRepository
             request.LinkedInUrl ?? "");
 
         await cmd.ExecuteNonQueryAsync();
+
+        string trainerId =
+            (string)trainerIdParam.Value;
 
         bool emailSent = true;
 

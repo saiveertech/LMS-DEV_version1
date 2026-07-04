@@ -31,22 +31,17 @@ public async Task<object> RegisterStudent(RegisterStudentRequest request)
 
     await conn.OpenAsync();
 
-    string countSql = "SELECT ISNULL(MAX(Id),0) + 1 FROM LMS.Students";
-
-    using var countCmd = new SqlCommand(countSql, conn);
-
-    int nextNumber = Convert.ToInt32(await countCmd.ExecuteScalarAsync());
-
-    string studentId =
-        $"SK{request.FirstName.Substring(0, 1).ToUpper()}" +
-        $"{request.LastName.Substring(0, 1).ToUpper()}" +
-        $"{nextNumber:D3}SD";
-
     using var cmd = new SqlCommand("LMS.SP_RegisterStudent", conn);
 
     cmd.CommandType = CommandType.StoredProcedure;
 
-    cmd.Parameters.AddWithValue("@StudentId", studentId);
+    var studentIdParam =
+        new SqlParameter("@StudentId", SqlDbType.NVarChar, 50)
+        {
+            Direction = ParameterDirection.Output
+        };
+
+    cmd.Parameters.Add(studentIdParam);
     cmd.Parameters.AddWithValue("@FirstName", request.FirstName);
     cmd.Parameters.AddWithValue("@LastName", request.LastName);
     cmd.Parameters.AddWithValue("@Email", request.Email);
@@ -57,6 +52,8 @@ public async Task<object> RegisterStudent(RegisterStudentRequest request)
 
     // Save student to database
     await cmd.ExecuteNonQueryAsync();
+
+    string studentId = (string)studentIdParam.Value;
 
     bool emailSent = true;
     string message = "Student Registered Successfully";

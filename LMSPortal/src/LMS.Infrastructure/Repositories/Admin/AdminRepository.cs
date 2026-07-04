@@ -32,22 +32,6 @@ public class AdminRepository : IAdminRepository
 
         await conn.OpenAsync();
 
-        // Generate AdminId
-
-        string sql =
-            "SELECT ISNULL(MAX(Id),0)+1 FROM LMS.Admin";
-
-        using var countCmd =
-            new SqlCommand(sql, conn);
-
-        int nextNumber =
-            Convert.ToInt32(await countCmd.ExecuteScalarAsync());
-
-        string adminId =
-            $"SK{request.FirstName.Substring(0,1).ToUpper()}" +
-            $"{request.LastName.Substring(0,1).ToUpper()}" +
-            $"{nextNumber:D3}AD";
-
         using var cmd =
             new SqlCommand(
                 "LMS.SP_RegisterAdmin",
@@ -56,9 +40,13 @@ public class AdminRepository : IAdminRepository
         cmd.CommandType =
             CommandType.StoredProcedure;
 
-        cmd.Parameters.AddWithValue(
-            "@AdminId",
-            adminId);
+        var adminIdParam =
+            new SqlParameter("@AdminId", SqlDbType.NVarChar, 50)
+            {
+                Direction = ParameterDirection.Output
+            };
+
+        cmd.Parameters.Add(adminIdParam);
 
         cmd.Parameters.AddWithValue(
             "@FirstName",
@@ -93,6 +81,9 @@ public class AdminRepository : IAdminRepository
             request.Bio ?? "");
 
         await cmd.ExecuteNonQueryAsync();
+
+        string adminId =
+            (string)adminIdParam.Value;
 
         bool emailSent = true;
 

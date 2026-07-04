@@ -1,0 +1,13 @@
+CREATE PROCEDURE LMS.SP_GetCourseById
+(
+@Id INT
+)
+AS
+BEGIN
+
+SELECT *
+FROM LMS.Courses
+WHERE Id = @Id
+
+END
+GO

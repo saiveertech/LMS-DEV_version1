@@ -123,6 +123,53 @@ public async Task<bool> ResetPassword(
             return true;
         }
     }
+    // Admin
+
+string adminSql = @"
+    SELECT Password
+    FROM LMS.Admin
+    WHERE Email = @Email";
+
+using (var cmd =
+    new SqlCommand(adminSql, conn))
+{
+    cmd.Parameters.AddWithValue(
+        "@Email",
+        email);
+
+    var storedPassword =
+        await cmd.ExecuteScalarAsync() as string;
+
+    if (!string.IsNullOrEmpty(storedPassword) &&
+        BCrypt.Net.BCrypt.Verify(
+            oldPassword,
+            storedPassword))
+    {
+        string newHash =
+            BCrypt.Net.BCrypt.HashPassword(
+                newPassword);
+
+        string updateSql = @"
+            UPDATE LMS.Admin
+            SET Password = @Password
+            WHERE Email = @Email";
+
+        using var updateCmd =
+            new SqlCommand(updateSql, conn);
+
+        updateCmd.Parameters.AddWithValue(
+            "@Email",
+            email);
+
+        updateCmd.Parameters.AddWithValue(
+            "@Password",
+            newHash);
+
+        await updateCmd.ExecuteNonQueryAsync();
+
+        return true;
+    }
+}
 
     return false;
 }
@@ -182,6 +229,28 @@ public async Task<(string Role, string Email)> Login(
             return ("Trainer", email);
         }
     }
+    // Admin
+
+string adminSql =
+    @"SELECT Password
+      FROM LMS.Admin
+      WHERE Email = @Email";
+
+using (var cmd = new SqlCommand(adminSql, conn))
+{
+    cmd.Parameters.AddWithValue(
+        "@Email",
+        email);
+
+    var hash =
+        await cmd.ExecuteScalarAsync() as string;
+
+    if (hash != null &&
+        BCrypt.Net.BCrypt.Verify(password, hash))
+    {
+        return ("Admin", email);
+    }
+}
 
     return ("", "");
 }
