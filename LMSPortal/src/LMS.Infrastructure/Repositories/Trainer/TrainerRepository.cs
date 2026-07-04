@@ -142,13 +142,15 @@ public class TrainerRepository : ITrainerRepository
     {
         using var conn = GetConnection();
 
-        using var cmd =
-            new SqlCommand(
-                "LMS.SP_GetTrainerById",
-                conn);
+        string sql = @"
+            SELECT TrainerId, FirstName, LastName, Email, PhoneNumber,
+                   ExperienceYears, CurrentCompany, Designation, Bio,
+                   LinkedInUrl, CreatedDate
+            FROM LMS.Trainers
+            WHERE (@TrainerId IS NULL OR TrainerId = @TrainerId)
+            ORDER BY CreatedDate DESC";
 
-        cmd.CommandType =
-            CommandType.StoredProcedure;
+        using var cmd = new SqlCommand(sql, conn);
 
         cmd.Parameters.AddWithValue(
             "@TrainerId",

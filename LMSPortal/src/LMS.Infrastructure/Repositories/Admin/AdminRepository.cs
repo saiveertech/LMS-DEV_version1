@@ -139,13 +139,14 @@ public class AdminRepository : IAdminRepository
 {
     using var conn = GetConnection();
 
-    using var cmd =
-        new SqlCommand(
-            "LMS.SP_GetAdminById",
-            conn);
+    string sql = @"
+        SELECT AdminId, FirstName, LastName, Email, PhoneNumber,
+               ExperienceYears, Skills, Bio, CreatedDate
+        FROM LMS.Admin
+        WHERE (@AdminId IS NULL OR AdminId = @AdminId)
+        ORDER BY CreatedDate DESC";
 
-    cmd.CommandType =
-        CommandType.StoredProcedure;
+    using var cmd = new SqlCommand(sql, conn);
 
     cmd.Parameters.AddWithValue(
         "@AdminId",

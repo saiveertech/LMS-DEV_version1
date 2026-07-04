@@ -100,13 +100,14 @@ public async Task<object?> GetStudentById(
 {
     using var conn = GetConnection();
 
-    using var cmd =
-        new SqlCommand(
-            "LMS.SP_GetStudentById",
-            conn);
+    string sql = @"
+        SELECT StudentId, FirstName, LastName, Email, PhoneNumber,
+               EducationDetails, AreaOfInterest, CreatedDate
+        FROM LMS.Students
+        WHERE (@StudentId IS NULL OR StudentId = @StudentId)
+        ORDER BY CreatedDate DESC";
 
-    cmd.CommandType =
-        CommandType.StoredProcedure;
+    using var cmd = new SqlCommand(sql, conn);
 
     cmd.Parameters.AddWithValue(
         "@StudentId",
