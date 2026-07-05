@@ -1,25 +1,28 @@
-using System.Text.Json;
 using LMS.Application.Common;
-using LMS.Application.Features.Course.DTOs;
+using LMS.Application.Features.Assignment.DTOs;
 using Microsoft.AspNetCore.Http;
 
-namespace LMS.Application.Features.Course.Services;
+namespace LMS.Application.Features.Assignment.Services;
 
-public class CourseService : ICourseService
+public class AssignmentService : IAssignmentService
 {
     private static readonly string[] AllowedVideoExtensions = { ".mp4", ".mov", ".webm" };
 
     private static readonly string[] AllowedIconExtensions = { ".png", ".jpg", ".jpeg", ".webp" };
 
+    private static readonly string[] AllowedCsvExtensions = { ".csv" };
+
     private const long MaxVideoSizeBytes = 500 * 1024 * 1024;
 
     private const long MaxIconSizeBytes = 5 * 1024 * 1024;
 
-    private readonly ICourseRepository _repo;
+    private const long MaxCsvSizeBytes = 20 * 1024 * 1024;
+
+    private readonly IAssignmentRepository _repo;
     private readonly IBlobStorageService _blobStorageService;
 
-    public CourseService(
-        ICourseRepository repo,
+    public AssignmentService(
+        IAssignmentRepository repo,
         IBlobStorageService blobStorageService)
     {
         _repo = repo;
@@ -27,11 +30,11 @@ public class CourseService : ICourseService
     }
 
     //=========================================
-    // Register Course
+    // Create Assignment
     //=========================================
 
-    public async Task<ServiceResponse> RegisterCourse(
-        CreateCourseRequest request,
+    public async Task<ServiceResponse> CreateAssignment(
+        CreateAssignmentRequest request,
         string createdById,
         string createdByName,
         string createdByRole)
@@ -85,24 +88,9 @@ public class CourseService : ICourseService
                 };
             }
 
-            if (!string.IsNullOrWhiteSpace(request.SlidesJson))
-            {
-                try
-                {
-                    using var _ = JsonDocument.Parse(request.SlidesJson);
-                }
-                catch (JsonException)
-                {
-                    return new ServiceResponse
-                    {
-                        Success = false,
-                        Message = "Slides Json is not valid JSON."
-                    };
-                }
-            }
-
             string introVideoUrl = string.Empty;
-            string courseIconUrl = string.Empty;
+            string questionsCsvUrl = string.Empty;
+            string assessmentIconUrl = string.Empty;
 
             if (request.IntroVideo != null)
             {
@@ -123,16 +111,16 @@ public class CourseService : ICourseService
 
                 introVideoUrl = await _blobStorageService.UploadFileAsync(
                     request.IntroVideo,
-                    "intro-videos");
+                    "assignment-intro-videos");
             }
 
-            if (request.CourseIcon != null)
+            if (request.QuestionsCsv != null)
             {
                 var validationError = ValidateFile(
-                    request.CourseIcon,
-                    AllowedIconExtensions,
-                    MaxIconSizeBytes,
-                    "Course Icon");
+                    request.QuestionsCsv,
+                    AllowedCsvExtensions,
+                    MaxCsvSizeBytes,
+                    "Questions Csv");
 
                 if (validationError != null)
                 {
@@ -143,15 +131,38 @@ public class CourseService : ICourseService
                     };
                 }
 
-                courseIconUrl = await _blobStorageService.UploadFileAsync(
-                    request.CourseIcon,
-                    "course-icons");
+                questionsCsvUrl = await _blobStorageService.UploadFileAsync(
+                    request.QuestionsCsv,
+                    "assignment-questions-csv");
             }
 
-            var result = await _repo.RegisterCourse(
+            if (request.AssessmentIcon != null)
+            {
+                var validationError = ValidateFile(
+                    request.AssessmentIcon,
+                    AllowedIconExtensions,
+                    MaxIconSizeBytes,
+                    "Assessment Icon");
+
+                if (validationError != null)
+                {
+                    return new ServiceResponse
+                    {
+                        Success = false,
+                        Message = validationError
+                    };
+                }
+
+                assessmentIconUrl = await _blobStorageService.UploadFileAsync(
+                    request.AssessmentIcon,
+                    "assignment-icons");
+            }
+
+            var result = await _repo.CreateAssignment(
                 request,
                 introVideoUrl,
-                courseIconUrl,
+                questionsCsvUrl,
+                assessmentIconUrl,
                 createdById,
                 createdByName,
                 createdByRole);
@@ -159,7 +170,7 @@ public class CourseService : ICourseService
             return new ServiceResponse
             {
                 Success = true,
-                Message = "Course Created Successfully.",
+                Message = "Assignment Created Successfully.",
                 Data = result
             };
         }
@@ -174,32 +185,32 @@ public class CourseService : ICourseService
     }
 
     //=========================================
-    // Get Course
+    // Get Assignments
     //=========================================
 
-    public async Task<object?> GetCourseById(int? courseId = null)
+    public async Task<object?> GetAssignments(int? assignmentId = null)
     {
-        return await _repo.GetCourseById(courseId);
+        return await _repo.GetAssignments(assignmentId);
     }
 
     //=========================================
-    // Update Course
+    // Update Assignment
     //=========================================
 
-    public async Task<ServiceResponse> UpdateCourse(
-        int courseId,
-        UpdateCourseRequest request)
+    public async Task<ServiceResponse> UpdateAssignment(
+        int assignmentId,
+        UpdateAssignmentRequest request)
     {
         try
         {
-            var course = await _repo.GetCourseById(courseId);
+            var assignment = await _repo.GetAssignments(assignmentId);
 
-            if (course == null)
+            if (assignment == null)
             {
                 return new ServiceResponse
                 {
                     Success = false,
-                    Message = "Course Not Found."
+                    Message = "Assignment Not Found."
                 };
             }
 
@@ -232,24 +243,9 @@ public class CourseService : ICourseService
                 };
             }
 
-            if (!string.IsNullOrWhiteSpace(request.SlidesJson))
-            {
-                try
-                {
-                    using var _ = JsonDocument.Parse(request.SlidesJson);
-                }
-                catch (JsonException)
-                {
-                    return new ServiceResponse
-                    {
-                        Success = false,
-                        Message = "Slides Json is not valid JSON."
-                    };
-                }
-            }
-
             string? introVideoUrl = null;
-            string? courseIconUrl = null;
+            string? questionsCsvUrl = null;
+            string? assessmentIconUrl = null;
 
             if (request.IntroVideo != null)
             {
@@ -270,16 +266,16 @@ public class CourseService : ICourseService
 
                 introVideoUrl = await _blobStorageService.UploadFileAsync(
                     request.IntroVideo,
-                    "intro-videos");
+                    "assignment-intro-videos");
             }
 
-            if (request.CourseIcon != null)
+            if (request.QuestionsCsv != null)
             {
                 var validationError = ValidateFile(
-                    request.CourseIcon,
-                    AllowedIconExtensions,
-                    MaxIconSizeBytes,
-                    "Course Icon");
+                    request.QuestionsCsv,
+                    AllowedCsvExtensions,
+                    MaxCsvSizeBytes,
+                    "Questions Csv");
 
                 if (validationError != null)
                 {
@@ -290,16 +286,39 @@ public class CourseService : ICourseService
                     };
                 }
 
-                courseIconUrl = await _blobStorageService.UploadFileAsync(
-                    request.CourseIcon,
-                    "course-icons");
+                questionsCsvUrl = await _blobStorageService.UploadFileAsync(
+                    request.QuestionsCsv,
+                    "assignment-questions-csv");
             }
 
-            var updated = await _repo.UpdateCourse(
-                courseId,
+            if (request.AssessmentIcon != null)
+            {
+                var validationError = ValidateFile(
+                    request.AssessmentIcon,
+                    AllowedIconExtensions,
+                    MaxIconSizeBytes,
+                    "Assessment Icon");
+
+                if (validationError != null)
+                {
+                    return new ServiceResponse
+                    {
+                        Success = false,
+                        Message = validationError
+                    };
+                }
+
+                assessmentIconUrl = await _blobStorageService.UploadFileAsync(
+                    request.AssessmentIcon,
+                    "assignment-icons");
+            }
+
+            var updated = await _repo.UpdateAssignment(
+                assignmentId,
                 request,
                 introVideoUrl,
-                courseIconUrl);
+                questionsCsvUrl,
+                assessmentIconUrl);
 
             if (!updated)
             {
@@ -313,8 +332,54 @@ public class CourseService : ICourseService
             return new ServiceResponse
             {
                 Success = true,
-                Message = "Course Updated Successfully.",
-                Data = await _repo.GetCourseById(courseId)
+                Message = "Assignment Updated Successfully.",
+                Data = await _repo.GetAssignments(assignmentId)
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ServiceResponse
+            {
+                Success = false,
+                Message = ex.Message
+            };
+        }
+    }
+
+    //=========================================
+    // Delete Assignment
+    //=========================================
+
+    public async Task<ServiceResponse> DeleteAssignment(int assignmentId)
+    {
+        try
+        {
+            var assignment = await _repo.GetAssignments(assignmentId);
+
+            if (assignment == null)
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Assignment Not Found."
+                };
+            }
+
+            var deleted = await _repo.DeleteAssignment(assignmentId);
+
+            if (!deleted)
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Delete Failed."
+                };
+            }
+
+            return new ServiceResponse
+            {
+                Success = true,
+                Message = "Assignment Deleted Successfully."
             };
         }
         catch (Exception ex)

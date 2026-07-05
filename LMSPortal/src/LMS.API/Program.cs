@@ -1,5 +1,6 @@
 
 using LMS.Application.Common;
+using LMS.Application.Features.Assignment.Services;
 using LMS.Application.Features.Auth.Services.Admin;
 using LMS.Application.Features.Auth.Services.Student;
 using LMS.Application.Features.Auth.Services.Trainer;
@@ -8,6 +9,7 @@ using LMS.Infrastructure.Authentication;
 using LMS.Infrastructure.Configurations;
 using LMS.Infrastructure.Email;
 using LMS.Infrastructure.Repositories.Admin;
+using LMS.Infrastructure.Repositories.Assignment;
 using LMS.Infrastructure.Repositories.Auth;
 using LMS.Infrastructure.Repositories.Course;
 using LMS.Infrastructure.Repositories.Student;
@@ -92,6 +94,9 @@ builder.Services.AddScoped<ITrainerService, TrainerService>();
 
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<ICourseService, CourseService>();
+
+builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
+builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 
 builder.Services.Configure<AzureStorageSettings>(
     builder.Configuration.GetSection("AzureStorage"));

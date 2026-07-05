@@ -7,7 +7,8 @@ public interface ICourseService
 {
     Task<ServiceResponse> RegisterCourse(
         CreateCourseRequest request,
-        string createdBy,
+        string createdById,
+        string createdByName,
         string createdByRole);
 
     Task<object?> GetCourseById(int? courseId = null);

@@ -174,7 +174,7 @@ using (var cmd =
     return false;
 }
 
-public async Task<(string Role, string Email, string Id)> Login(
+public async Task<(string Role, string Email, string Id, string Name)> Login(
     string email,
     string password)
 {
@@ -185,7 +185,7 @@ public async Task<(string Role, string Email, string Id)> Login(
     // Student
 
     string studentSql =
-        "SELECT StudentId, Password FROM LMS.Students WHERE Email = @Email";
+        "SELECT StudentId, FirstName, LastName, Password FROM LMS.Students WHERE Email = @Email";
 
     using (var cmd =
         new SqlCommand(studentSql, conn))
@@ -199,11 +199,12 @@ public async Task<(string Role, string Email, string Id)> Login(
         if (await reader.ReadAsync())
         {
             var studentId = reader.GetString(0);
-            var hash = reader.GetString(1);
+            var name = $"{reader.GetString(1)} {reader.GetString(2)}";
+            var hash = reader.GetString(3);
 
             if (BCrypt.Net.BCrypt.Verify(password, hash))
             {
-                return ("Student", email, studentId);
+                return ("Student", email, studentId, name);
             }
         }
     }
@@ -211,7 +212,7 @@ public async Task<(string Role, string Email, string Id)> Login(
     // Trainer
 
     string trainerSql =
-        "SELECT TrainerId, Password FROM LMS.Trainers WHERE Email = @Email";
+        "SELECT TrainerId, FirstName, LastName, Password FROM LMS.Trainers WHERE Email = @Email";
 
     using (var cmd =
         new SqlCommand(trainerSql, conn))
@@ -225,18 +226,19 @@ public async Task<(string Role, string Email, string Id)> Login(
         if (await reader.ReadAsync())
         {
             var trainerId = reader.GetString(0);
-            var hash = reader.GetString(1);
+            var name = $"{reader.GetString(1)} {reader.GetString(2)}";
+            var hash = reader.GetString(3);
 
             if (BCrypt.Net.BCrypt.Verify(password, hash))
             {
-                return ("Trainer", email, trainerId);
+                return ("Trainer", email, trainerId, name);
             }
         }
     }
     // Admin
 
 string adminSql =
-    @"SELECT AdminId, Password
+    @"SELECT AdminId, FirstName, LastName, Password
       FROM LMS.Admin
       WHERE Email = @Email";
 
@@ -251,16 +253,17 @@ using (var cmd = new SqlCommand(adminSql, conn))
     if (await reader.ReadAsync())
     {
         var adminId = reader.GetString(0);
-        var hash = reader.GetString(1);
+        var name = $"{reader.GetString(1)} {reader.GetString(2)}";
+        var hash = reader.GetString(3);
 
         if (BCrypt.Net.BCrypt.Verify(password, hash))
         {
-            return ("Admin", email, adminId);
+            return ("Admin", email, adminId, name);
         }
     }
 }
 
-    return ("", "", "");
+    return ("", "", "", "");
 }
 
 

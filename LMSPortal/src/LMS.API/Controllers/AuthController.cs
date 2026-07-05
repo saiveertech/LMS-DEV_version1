@@ -1,3 +1,4 @@
+using LMS.Application.Common;
 using LMS.Application.Features.Auth.DTOs;
 using LMS.Infrastructure.Repositories.Auth;
 using Microsoft.AspNetCore.Authorization;
@@ -38,7 +39,7 @@ public class AuthController : ControllerBase
                     Message = "Invalid email or password"
                 });
 
-            var token = GenerateJwtToken(result.Email, result.Role);
+            var token = GenerateJwtToken(result.Email, result.Role, result.Id, result.Name);
 
             return Ok(new
             {
@@ -87,7 +88,11 @@ public async Task<IActionResult> ResetPassword(
     });
 }
     
-    private (string Value, DateTime ExpiresAt) GenerateJwtToken(string email, string role)
+    private (string Value, DateTime ExpiresAt) GenerateJwtToken(
+        string email,
+        string role,
+        string userId,
+        string fullName)
     {
         var secretKey = _config["JwtSettings:SecretKey"]!;
         var issuer    = _config["JwtSettings:Issuer"]!;
@@ -100,7 +105,9 @@ public async Task<IActionResult> ResetPassword(
         var claims = new[]
         {
             new Claim(ClaimTypes.Name, email),
-            new Claim(ClaimTypes.Role, role)
+            new Claim(ClaimTypes.Role, role),
+            new Claim(AppClaimTypes.UserId, userId),
+            new Claim(AppClaimTypes.FullName, fullName)
         };
 
         var expiry = DateTime.UtcNow.AddMinutes(expiryMin);

@@ -1,13 +1,13 @@
-ALTER PROCEDURE LMS.SP_RegisterCourse
+ALTER PROCEDURE LMS.SP_CreateAssignment
 (
 @Title NVARCHAR(200),
 @Description NVARCHAR(MAX),
 @IntroVideoUrl NVARCHAR(MAX),
-@SlidesJson NVARCHAR(MAX),
+@QuestionsCsvUrl NVARCHAR(MAX),
 @CompletionTimeSeconds INT,
 @PassPercentage DECIMAL(5,2),
 @WwEnvClientId NVARCHAR(100),
-@CourseIconUrl NVARCHAR(MAX),
+@AssessmentIconUrl NVARCHAR(MAX),
 @Tags NVARCHAR(MAX),
 @CreatedById NVARCHAR(50),
 @CreatedByName NVARCHAR(200),
@@ -15,16 +15,18 @@ ALTER PROCEDURE LMS.SP_RegisterCourse
 )
 AS
 BEGIN
-INSERT INTO LMS.Courses
+SET NOCOUNT ON;
+
+INSERT INTO LMS.Assignments
 (
 Title,
 Description,
 IntroVideoUrl,
-SlidesJson,
+QuestionsCsvUrl,
 CompletionTimeSeconds,
 PassPercentage,
 WwEnvClientId,
-CourseIconUrl,
+AssessmentIconUrl,
 Tags,
 CreatedById,
 CreatedByName,
@@ -35,17 +37,17 @@ VALUES
 @Title,
 @Description,
 @IntroVideoUrl,
-@SlidesJson,
+@QuestionsCsvUrl,
 @CompletionTimeSeconds,
 @PassPercentage,
 @WwEnvClientId,
-@CourseIconUrl,
+@AssessmentIconUrl,
 @Tags,
 @CreatedById,
 @CreatedByName,
 @CreatedByRole
 )
 
-SELECT SCOPE_IDENTITY() AS Id
+SELECT SCOPE_IDENTITY() AS AssignmentId
 END
 GO

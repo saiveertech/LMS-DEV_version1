@@ -8,7 +8,8 @@ public interface ICourseRepository
         CreateCourseRequest request,
         string introVideoUrl,
         string courseIconUrl,
-        string createdBy,
+        string createdById,
+        string createdByName,
         string createdByRole);
 
     Task<object?> GetCourseById(int? courseId = null);

@@ -1,16 +1,16 @@
 using System.Data;
-using LMS.Application.Features.Course.DTOs;
-using LMS.Application.Features.Course.Services;
+using LMS.Application.Features.Assignment.DTOs;
+using LMS.Application.Features.Assignment.Services;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 
-namespace LMS.Infrastructure.Repositories.Course;
+namespace LMS.Infrastructure.Repositories.Assignment;
 
-public class CourseRepository : ICourseRepository
+public class AssignmentRepository : IAssignmentRepository
 {
     private readonly IConfiguration _configuration;
 
-    public CourseRepository(IConfiguration configuration)
+    public AssignmentRepository(IConfiguration configuration)
     {
         _configuration = configuration;
     }
@@ -21,17 +21,18 @@ public class CourseRepository : ICourseRepository
             _configuration.GetConnectionString("DefaultConnection"));
     }
 
-    public async Task<object> RegisterCourse(
-        CreateCourseRequest request,
+    public async Task<object> CreateAssignment(
+        CreateAssignmentRequest request,
         string introVideoUrl,
-        string courseIconUrl,
+        string questionsCsvUrl,
+        string assessmentIconUrl,
         string createdById,
         string createdByName,
         string createdByRole)
     {
         using var conn = GetConnection();
 
-        using var cmd = new SqlCommand("LMS.SP_RegisterCourse", conn);
+        using var cmd = new SqlCommand("LMS.SP_CreateAssignment", conn);
 
         cmd.CommandType = CommandType.StoredProcedure;
 
@@ -50,10 +51,10 @@ public class CourseRepository : ICourseRepository
                 : introVideoUrl);
 
         cmd.Parameters.AddWithValue(
-            "@SlidesJson",
-            string.IsNullOrWhiteSpace(request.SlidesJson)
+            "@QuestionsCsvUrl",
+            string.IsNullOrWhiteSpace(questionsCsvUrl)
                 ? DBNull.Value
-                : request.SlidesJson);
+                : questionsCsvUrl);
 
         cmd.Parameters.AddWithValue("@CompletionTimeSeconds", request.CompletionTimeSeconds);
 
@@ -66,10 +67,10 @@ public class CourseRepository : ICourseRepository
                 : request.WwEnvClientId);
 
         cmd.Parameters.AddWithValue(
-            "@CourseIconUrl",
-            string.IsNullOrWhiteSpace(courseIconUrl)
+            "@AssessmentIconUrl",
+            string.IsNullOrWhiteSpace(assessmentIconUrl)
                 ? DBNull.Value
-                : courseIconUrl);
+                : assessmentIconUrl);
 
         cmd.Parameters.AddWithValue(
             "@Tags",
@@ -85,68 +86,67 @@ public class CourseRepository : ICourseRepository
 
         var newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
-        return await GetCourseById(newId) ?? new { Id = newId };
+        return await GetAssignments(newId) ?? new { AssignmentId = newId };
     }
 
-    public async Task<object?> GetCourseById(int? courseId = null)
+    public async Task<object?> GetAssignments(int? assignmentId = null)
     {
         using var conn = GetConnection();
 
-        using var cmd = new SqlCommand("LMS.SP_GetCourseById", conn);
+        using var cmd = new SqlCommand("LMS.SP_GetAssignments", conn);
 
         cmd.CommandType = CommandType.StoredProcedure;
 
-        cmd.Parameters.AddWithValue("@Id", (object?)courseId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@AssignmentId", (object?)assignmentId ?? DBNull.Value);
 
         await conn.OpenAsync();
 
         using var reader = await cmd.ExecuteReaderAsync();
 
-        var courses = new List<object>();
+        var assignments = new List<object>();
 
         while (await reader.ReadAsync())
         {
-            courses.Add(new
+            assignments.Add(new
             {
-                Id = reader["Id"],
+                AssignmentId = reader["AssignmentId"],
                 Title = reader["Title"],
                 Description = reader["Description"],
                 IntroVideoUrl = reader["IntroVideoUrl"],
-                SlidesJson = reader["SlidesJson"],
+                QuestionsCsvUrl = reader["QuestionsCsvUrl"],
                 CompletionTimeSeconds = reader["CompletionTimeSeconds"],
                 PassPercentage = reader["PassPercentage"],
                 WwEnvClientId = reader["WwEnvClientId"],
-                CourseIconUrl = reader["CourseIconUrl"],
+                AssessmentIconUrl = reader["AssessmentIconUrl"],
                 Tags = reader["Tags"],
-                CourseStatus = reader["CourseStatus"],
                 CreatedById = reader["CreatedById"],
                 CreatedByName = reader["CreatedByName"],
                 CreatedByRole = reader["CreatedByRole"],
-                IsActive = reader["IsActive"],
                 CreatedAt = reader["CreatedAt"],
-                UpdatedDate = reader["UpdatedDate"]
+                UpdatedAt = reader["UpdatedAt"]
             });
         }
 
-        if (courseId.HasValue)
-            return courses.Count > 0 ? courses[0] : null;
+        if (assignmentId.HasValue)
+            return assignments.Count > 0 ? assignments[0] : null;
 
-        return courses;
+        return assignments;
     }
 
-    public async Task<bool> UpdateCourse(
-        int courseId,
-        UpdateCourseRequest request,
+    public async Task<bool> UpdateAssignment(
+        int assignmentId,
+        UpdateAssignmentRequest request,
         string? introVideoUrl,
-        string? courseIconUrl)
+        string? questionsCsvUrl,
+        string? assessmentIconUrl)
     {
         using var conn = GetConnection();
 
-        using var cmd = new SqlCommand("LMS.SP_UpdateCourse", conn);
+        using var cmd = new SqlCommand("LMS.SP_UpdateAssignment", conn);
 
         cmd.CommandType = CommandType.StoredProcedure;
 
-        cmd.Parameters.AddWithValue("@Id", courseId);
+        cmd.Parameters.AddWithValue("@AssignmentId", assignmentId);
 
         cmd.Parameters.AddWithValue(
             "@Title",
@@ -167,10 +167,10 @@ public class CourseRepository : ICourseRepository
                 : introVideoUrl);
 
         cmd.Parameters.AddWithValue(
-            "@SlidesJson",
-            string.IsNullOrWhiteSpace(request.SlidesJson)
+            "@QuestionsCsvUrl",
+            string.IsNullOrWhiteSpace(questionsCsvUrl)
                 ? DBNull.Value
-                : request.SlidesJson);
+                : questionsCsvUrl);
 
         cmd.Parameters.AddWithValue(
             "@CompletionTimeSeconds",
@@ -191,10 +191,10 @@ public class CourseRepository : ICourseRepository
                 : request.WwEnvClientId);
 
         cmd.Parameters.AddWithValue(
-            "@CourseIconUrl",
-            string.IsNullOrWhiteSpace(courseIconUrl)
+            "@AssessmentIconUrl",
+            string.IsNullOrWhiteSpace(assessmentIconUrl)
                 ? DBNull.Value
-                : courseIconUrl);
+                : assessmentIconUrl);
 
         cmd.Parameters.AddWithValue(
             "@Tags",
@@ -202,17 +202,24 @@ public class CourseRepository : ICourseRepository
                 ? DBNull.Value
                 : request.Tags);
 
-        cmd.Parameters.AddWithValue(
-            "@CourseStatus",
-            string.IsNullOrWhiteSpace(request.CourseStatus)
-                ? DBNull.Value
-                : request.CourseStatus);
+        await conn.OpenAsync();
 
-        cmd.Parameters.AddWithValue(
-            "@IsActive",
-            request.IsActive.HasValue
-                ? request.IsActive.Value
-                : DBNull.Value);
+        var result = await cmd.ExecuteScalarAsync();
+
+        int rows = Convert.ToInt32(result);
+
+        return rows > 0;
+    }
+
+    public async Task<bool> DeleteAssignment(int assignmentId)
+    {
+        using var conn = GetConnection();
+
+        using var cmd = new SqlCommand("LMS.SP_DeleteAssignment", conn);
+
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@AssignmentId", assignmentId);
 
         await conn.OpenAsync();
 
