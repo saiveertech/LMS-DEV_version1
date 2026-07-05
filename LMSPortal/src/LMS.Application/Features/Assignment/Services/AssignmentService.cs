@@ -199,10 +199,24 @@ public class AssignmentService : IAssignmentService
 
     public async Task<ServiceResponse> UpdateAssignment(
         int assignmentId,
-        UpdateAssignmentRequest request)
+        UpdateAssignmentRequest request,
+        string editedById,
+        string editedByName,
+        string editedByRole)
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(editedById) ||
+                string.IsNullOrWhiteSpace(editedByName) ||
+                string.IsNullOrWhiteSpace(editedByRole))
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Unable to determine the authenticated user."
+                };
+            }
+
             var assignment = await _repo.GetAssignments(assignmentId);
 
             if (assignment == null)
@@ -318,7 +332,10 @@ public class AssignmentService : IAssignmentService
                 request,
                 introVideoUrl,
                 questionsCsvUrl,
-                assessmentIconUrl);
+                assessmentIconUrl,
+                editedById,
+                editedByName,
+                editedByRole);
 
             if (!updated)
             {
@@ -350,10 +367,25 @@ public class AssignmentService : IAssignmentService
     // Delete Assignment
     //=========================================
 
-    public async Task<ServiceResponse> DeleteAssignment(int assignmentId)
+    public async Task<ServiceResponse> DeleteAssignment(
+        int assignmentId,
+        string deletedById,
+        string deletedByName,
+        string deletedByRole)
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(deletedById) ||
+                string.IsNullOrWhiteSpace(deletedByName) ||
+                string.IsNullOrWhiteSpace(deletedByRole))
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Unable to determine the authenticated user."
+                };
+            }
+
             var assignment = await _repo.GetAssignments(assignmentId);
 
             if (assignment == null)
@@ -365,7 +397,11 @@ public class AssignmentService : IAssignmentService
                 };
             }
 
-            var deleted = await _repo.DeleteAssignment(assignmentId);
+            var deleted = await _repo.DeleteAssignment(
+                assignmentId,
+                deletedById,
+                deletedByName,
+                deletedByRole);
 
             if (!deleted)
             {

@@ -15,7 +15,14 @@ public interface IAssignmentService
 
     Task<ServiceResponse> UpdateAssignment(
         int assignmentId,
-        UpdateAssignmentRequest request);
+        UpdateAssignmentRequest request,
+        string editedById,
+        string editedByName,
+        string editedByRole);
 
-    Task<ServiceResponse> DeleteAssignment(int assignmentId);
+    Task<ServiceResponse> DeleteAssignment(
+        int assignmentId,
+        string deletedById,
+        string deletedByName,
+        string deletedByRole);
 }

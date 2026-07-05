@@ -20,7 +20,14 @@ public interface IAssignmentRepository
         UpdateAssignmentRequest request,
         string? introVideoUrl,
         string? questionsCsvUrl,
-        string? assessmentIconUrl);
+        string? assessmentIconUrl,
+        string editedById,
+        string editedByName,
+        string editedByRole);
 
-    Task<bool> DeleteAssignment(int assignmentId);
+    Task<bool> DeleteAssignment(
+        int assignmentId,
+        string deletedById,
+        string deletedByName,
+        string deletedByRole);
 }

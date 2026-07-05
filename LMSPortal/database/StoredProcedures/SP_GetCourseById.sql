@@ -10,6 +10,7 @@ SET NOCOUNT ON;
 SELECT *
 FROM LMS.Courses
 WHERE (@Id IS NULL OR Id = @Id)
+    AND IsDeleted = 0
 ORDER BY CreatedAt DESC
 
 END

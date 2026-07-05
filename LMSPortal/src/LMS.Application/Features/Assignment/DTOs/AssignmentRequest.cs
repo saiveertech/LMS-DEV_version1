@@ -22,6 +22,12 @@ public class CreateAssignmentRequest
     public IFormFile? QuestionsCsv { get; set; }
 
     public IFormFile? AssessmentIcon { get; set; }
+
+    public string? CreatedById { get; set; }
+
+    public string? CreatedByName { get; set; }
+
+    public string? CreatedByRole { get; set; }
 }
 
 public class UpdateAssignmentRequest
@@ -43,4 +49,10 @@ public class UpdateAssignmentRequest
     public IFormFile? QuestionsCsv { get; set; }
 
     public IFormFile? AssessmentIcon { get; set; }
+
+    public string? EditedById { get; set; }
+
+    public string? EditedByName { get; set; }
+
+    public string? EditedByRole { get; set; }
 }

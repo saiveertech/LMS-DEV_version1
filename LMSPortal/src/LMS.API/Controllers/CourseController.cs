@@ -29,9 +29,17 @@ public class CourseController : ControllerBase
     public async Task<IActionResult> RegisterCourse(
         [FromForm] CreateCourseRequest request)
     {
-        var createdById = User.FindFirstValue(AppClaimTypes.UserId) ?? string.Empty;
-        var createdByName = User.FindFirstValue(AppClaimTypes.FullName) ?? string.Empty;
-        var createdByRole = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+        var createdById = !string.IsNullOrWhiteSpace(request.CreatedById)
+            ? request.CreatedById
+            : User.FindFirstValue(AppClaimTypes.UserId) ?? string.Empty;
+
+        var createdByName = !string.IsNullOrWhiteSpace(request.CreatedByName)
+            ? request.CreatedByName
+            : User.FindFirstValue(AppClaimTypes.FullName) ?? string.Empty;
+
+        var createdByRole = !string.IsNullOrWhiteSpace(request.CreatedByRole)
+            ? request.CreatedByRole
+            : User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
 
         var result = await _service.RegisterCourse(
             request,
@@ -48,7 +56,7 @@ public class CourseController : ControllerBase
     }
 
     [HttpGet("get-course-details/{courseId:int?}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<CourseResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCourseDetails(int? courseId)
     {
@@ -77,7 +85,50 @@ public class CourseController : ControllerBase
         int courseId,
         [FromForm] UpdateCourseRequest request)
     {
-        var result = await _service.UpdateCourse(courseId, request);
+        var editedById = !string.IsNullOrWhiteSpace(request.EditedById)
+            ? request.EditedById
+            : User.FindFirstValue(AppClaimTypes.UserId) ?? string.Empty;
+
+        var editedByName = !string.IsNullOrWhiteSpace(request.EditedByName)
+            ? request.EditedByName
+            : User.FindFirstValue(AppClaimTypes.FullName) ?? string.Empty;
+
+        var editedByRole = !string.IsNullOrWhiteSpace(request.EditedByRole)
+            ? request.EditedByRole
+            : User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+
+        var result = await _service.UpdateCourse(
+            courseId,
+            request,
+            editedById,
+            editedByName,
+            editedByRole);
+
+        if (!result.Success)
+        {
+            if (result.Message == "Course Not Found.")
+                return NotFound(result);
+
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    [HttpDelete("{courseId:int}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteCourse(int courseId)
+    {
+        var deletedById = User.FindFirstValue(AppClaimTypes.UserId) ?? string.Empty;
+        var deletedByName = User.FindFirstValue(AppClaimTypes.FullName) ?? string.Empty;
+        var deletedByRole = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
+
+        var result = await _service.DeleteCourse(
+            courseId,
+            deletedById,
+            deletedByName,
+            deletedByRole);
 
         if (!result.Success)
         {

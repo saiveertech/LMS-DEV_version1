@@ -103,27 +103,34 @@ public class AssignmentRepository : IAssignmentRepository
 
         using var reader = await cmd.ExecuteReaderAsync();
 
-        var assignments = new List<object>();
+        var assignments = new List<AssignmentResponse>();
 
         while (await reader.ReadAsync())
         {
-            assignments.Add(new
+            assignments.Add(new AssignmentResponse
             {
-                AssignmentId = reader["AssignmentId"],
-                Title = reader["Title"],
-                Description = reader["Description"],
-                IntroVideoUrl = reader["IntroVideoUrl"],
-                QuestionsCsvUrl = reader["QuestionsCsvUrl"],
-                CompletionTimeSeconds = reader["CompletionTimeSeconds"],
-                PassPercentage = reader["PassPercentage"],
-                WwEnvClientId = reader["WwEnvClientId"],
-                AssessmentIconUrl = reader["AssessmentIconUrl"],
-                Tags = reader["Tags"],
-                CreatedById = reader["CreatedById"],
-                CreatedByName = reader["CreatedByName"],
-                CreatedByRole = reader["CreatedByRole"],
-                CreatedAt = reader["CreatedAt"],
-                UpdatedAt = reader["UpdatedAt"]
+                AssignmentId = Convert.ToInt32(reader["AssignmentId"]),
+                Title = reader["Title"] as string ?? string.Empty,
+                Description = reader["Description"] as string,
+                IntroVideoUrl = reader["IntroVideoUrl"] as string,
+                QuestionsCsvUrl = reader["QuestionsCsvUrl"] as string,
+                CompletionTimeSeconds = Convert.ToInt32(reader["CompletionTimeSeconds"]),
+                PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
+                WwEnvClientId = reader["WwEnvClientId"] as string,
+                AssessmentIconUrl = reader["AssessmentIconUrl"] as string,
+                Tags = reader["Tags"] as string,
+                CreatedById = reader["CreatedById"] as string ?? string.Empty,
+                CreatedByName = reader["CreatedByName"] as string ?? string.Empty,
+                CreatedByRole = reader["CreatedByRole"] as string ?? string.Empty,
+                EditedById = reader["EditedById"] as string,
+                EditedByName = reader["EditedByName"] as string,
+                EditedByRole = reader["EditedByRole"] as string,
+                DeletedById = reader["DeletedById"] as string,
+                DeletedByName = reader["DeletedByName"] as string,
+                DeletedByRole = reader["DeletedByRole"] as string,
+                DeletedAt = reader["DeletedAt"] as DateTime?,
+                CreatedAt = Convert.ToDateTime(reader["CreatedAt"]),
+                UpdatedAt = reader["UpdatedAt"] as DateTime?
             });
         }
 
@@ -138,7 +145,10 @@ public class AssignmentRepository : IAssignmentRepository
         UpdateAssignmentRequest request,
         string? introVideoUrl,
         string? questionsCsvUrl,
-        string? assessmentIconUrl)
+        string? assessmentIconUrl,
+        string editedById,
+        string editedByName,
+        string editedByRole)
     {
         using var conn = GetConnection();
 
@@ -202,6 +212,10 @@ public class AssignmentRepository : IAssignmentRepository
                 ? DBNull.Value
                 : request.Tags);
 
+        cmd.Parameters.AddWithValue("@EditedById", editedById);
+        cmd.Parameters.AddWithValue("@EditedByName", editedByName);
+        cmd.Parameters.AddWithValue("@EditedByRole", editedByRole);
+
         await conn.OpenAsync();
 
         var result = await cmd.ExecuteScalarAsync();
@@ -211,7 +225,11 @@ public class AssignmentRepository : IAssignmentRepository
         return rows > 0;
     }
 
-    public async Task<bool> DeleteAssignment(int assignmentId)
+    public async Task<bool> DeleteAssignment(
+        int assignmentId,
+        string deletedById,
+        string deletedByName,
+        string deletedByRole)
     {
         using var conn = GetConnection();
 
@@ -220,6 +238,9 @@ public class AssignmentRepository : IAssignmentRepository
         cmd.CommandType = CommandType.StoredProcedure;
 
         cmd.Parameters.AddWithValue("@AssignmentId", assignmentId);
+        cmd.Parameters.AddWithValue("@DeletedById", deletedById);
+        cmd.Parameters.AddWithValue("@DeletedByName", deletedByName);
+        cmd.Parameters.AddWithValue("@DeletedByRole", deletedByRole);
 
         await conn.OpenAsync();
 

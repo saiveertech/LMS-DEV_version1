@@ -1,4 +1,4 @@
-CREATE PROCEDURE LMS.SP_UpdateCourse
+ALTER PROCEDURE LMS.SP_UpdateCourse
 (
     @Id INT,
     @Title NVARCHAR(200) = NULL,
@@ -11,7 +11,10 @@ CREATE PROCEDURE LMS.SP_UpdateCourse
     @CourseIconUrl NVARCHAR(MAX) = NULL,
     @Tags NVARCHAR(MAX) = NULL,
     @CourseStatus NVARCHAR(50) = NULL,
-    @IsActive BIT = NULL
+    @IsActive BIT = NULL,
+    @EditedById NVARCHAR(50),
+    @EditedByName NVARCHAR(200),
+    @EditedByRole NVARCHAR(50)
 )
 AS
 BEGIN
@@ -31,8 +34,12 @@ SET
     Tags = ISNULL(@Tags, Tags),
     CourseStatus = ISNULL(@CourseStatus, CourseStatus),
     IsActive = ISNULL(@IsActive, IsActive),
+    EditedById = @EditedById,
+    EditedByName = @EditedByName,
+    EditedByRole = @EditedByRole,
     UpdatedDate = SYSUTCDATETIME()
-WHERE Id = @Id;
+WHERE Id = @Id
+    AND IsDeleted = 0;
 
 SELECT @@ROWCOUNT;
 

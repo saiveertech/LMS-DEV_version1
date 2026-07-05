@@ -102,29 +102,36 @@ public class CourseRepository : ICourseRepository
 
         using var reader = await cmd.ExecuteReaderAsync();
 
-        var courses = new List<object>();
+        var courses = new List<CourseResponse>();
 
         while (await reader.ReadAsync())
         {
-            courses.Add(new
+            courses.Add(new CourseResponse
             {
-                Id = reader["Id"],
-                Title = reader["Title"],
-                Description = reader["Description"],
-                IntroVideoUrl = reader["IntroVideoUrl"],
-                SlidesJson = reader["SlidesJson"],
-                CompletionTimeSeconds = reader["CompletionTimeSeconds"],
-                PassPercentage = reader["PassPercentage"],
-                WwEnvClientId = reader["WwEnvClientId"],
-                CourseIconUrl = reader["CourseIconUrl"],
-                Tags = reader["Tags"],
-                CourseStatus = reader["CourseStatus"],
-                CreatedById = reader["CreatedById"],
-                CreatedByName = reader["CreatedByName"],
-                CreatedByRole = reader["CreatedByRole"],
-                IsActive = reader["IsActive"],
-                CreatedAt = reader["CreatedAt"],
-                UpdatedDate = reader["UpdatedDate"]
+                Id = Convert.ToInt32(reader["Id"]),
+                Title = reader["Title"] as string ?? string.Empty,
+                Description = reader["Description"] as string,
+                IntroVideoUrl = reader["IntroVideoUrl"] as string,
+                SlidesJson = reader["SlidesJson"] as string,
+                CompletionTimeSeconds = Convert.ToInt32(reader["CompletionTimeSeconds"]),
+                PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
+                WwEnvClientId = reader["WwEnvClientId"] as string,
+                CourseIconUrl = reader["CourseIconUrl"] as string,
+                Tags = reader["Tags"] as string,
+                CourseStatus = reader["CourseStatus"] as string ?? string.Empty,
+                CreatedById = reader["CreatedById"] as string ?? string.Empty,
+                CreatedByName = reader["CreatedByName"] as string ?? string.Empty,
+                CreatedByRole = reader["CreatedByRole"] as string ?? string.Empty,
+                EditedById = reader["EditedById"] as string,
+                EditedByName = reader["EditedByName"] as string,
+                EditedByRole = reader["EditedByRole"] as string,
+                DeletedById = reader["DeletedById"] as string,
+                DeletedByName = reader["DeletedByName"] as string,
+                DeletedByRole = reader["DeletedByRole"] as string,
+                DeletedAt = reader["DeletedAt"] as DateTime?,
+                IsActive = Convert.ToBoolean(reader["IsActive"]),
+                CreatedAt = Convert.ToDateTime(reader["CreatedAt"]),
+                UpdatedDate = reader["UpdatedDate"] as DateTime?
             });
         }
 
@@ -138,7 +145,10 @@ public class CourseRepository : ICourseRepository
         int courseId,
         UpdateCourseRequest request,
         string? introVideoUrl,
-        string? courseIconUrl)
+        string? courseIconUrl,
+        string editedById,
+        string editedByName,
+        string editedByRole)
     {
         using var conn = GetConnection();
 
@@ -213,6 +223,36 @@ public class CourseRepository : ICourseRepository
             request.IsActive.HasValue
                 ? request.IsActive.Value
                 : DBNull.Value);
+
+        cmd.Parameters.AddWithValue("@EditedById", editedById);
+        cmd.Parameters.AddWithValue("@EditedByName", editedByName);
+        cmd.Parameters.AddWithValue("@EditedByRole", editedByRole);
+
+        await conn.OpenAsync();
+
+        var result = await cmd.ExecuteScalarAsync();
+
+        int rows = Convert.ToInt32(result);
+
+        return rows > 0;
+    }
+
+    public async Task<bool> DeleteCourse(
+        int courseId,
+        string deletedById,
+        string deletedByName,
+        string deletedByRole)
+    {
+        using var conn = GetConnection();
+
+        using var cmd = new SqlCommand("LMS.SP_DeleteCourse", conn);
+
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@Id", courseId);
+        cmd.Parameters.AddWithValue("@DeletedById", deletedById);
+        cmd.Parameters.AddWithValue("@DeletedByName", deletedByName);
+        cmd.Parameters.AddWithValue("@DeletedByRole", deletedByRole);
 
         await conn.OpenAsync();
 

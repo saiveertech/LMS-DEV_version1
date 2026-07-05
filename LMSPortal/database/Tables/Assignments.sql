@@ -26,6 +26,20 @@ CREATE TABLE LMS.Assignments
 
     CreatedByRole NVARCHAR(50) NOT NULL,
 
+    EditedById NVARCHAR(50) NULL,
+
+    EditedByName NVARCHAR(200) NULL,
+
+    EditedByRole NVARCHAR(50) NULL,
+
+    DeletedById NVARCHAR(50) NULL,
+
+    DeletedByName NVARCHAR(200) NULL,
+
+    DeletedByRole NVARCHAR(50) NULL,
+
+    DeletedAt DATETIME2 NULL,
+
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
 
     UpdatedAt DATETIME2 NULL,

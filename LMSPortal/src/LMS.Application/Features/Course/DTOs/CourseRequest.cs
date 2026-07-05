@@ -21,6 +21,12 @@ public class CreateCourseRequest
     public IFormFile? IntroVideo { get; set; }
 
     public IFormFile? CourseIcon { get; set; }
+
+    public string? CreatedById { get; set; }
+
+    public string? CreatedByName { get; set; }
+
+    public string? CreatedByRole { get; set; }
 }
 
 public class UpdateCourseRequest
@@ -46,4 +52,10 @@ public class UpdateCourseRequest
     public IFormFile? IntroVideo { get; set; }
 
     public IFormFile? CourseIcon { get; set; }
+
+    public string? EditedById { get; set; }
+
+    public string? EditedByName { get; set; }
+
+    public string? EditedByRole { get; set; }
 }

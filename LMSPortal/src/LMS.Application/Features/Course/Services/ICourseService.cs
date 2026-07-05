@@ -15,5 +15,14 @@ public interface ICourseService
 
     Task<ServiceResponse> UpdateCourse(
         int courseId,
-        UpdateCourseRequest request);
+        UpdateCourseRequest request,
+        string editedById,
+        string editedByName,
+        string editedByRole);
+
+    Task<ServiceResponse> DeleteCourse(
+        int courseId,
+        string deletedById,
+        string deletedByName,
+        string deletedByRole);
 }

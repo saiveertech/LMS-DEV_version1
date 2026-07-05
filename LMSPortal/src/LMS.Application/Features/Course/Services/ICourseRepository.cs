@@ -18,5 +18,14 @@ public interface ICourseRepository
         int courseId,
         UpdateCourseRequest request,
         string? introVideoUrl,
-        string? courseIconUrl);
+        string? courseIconUrl,
+        string editedById,
+        string editedByName,
+        string editedByRole);
+
+    Task<bool> DeleteCourse(
+        int courseId,
+        string deletedById,
+        string deletedByName,
+        string deletedByRole);
 }

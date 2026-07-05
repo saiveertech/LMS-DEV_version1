@@ -188,10 +188,24 @@ public class CourseService : ICourseService
 
     public async Task<ServiceResponse> UpdateCourse(
         int courseId,
-        UpdateCourseRequest request)
+        UpdateCourseRequest request,
+        string editedById,
+        string editedByName,
+        string editedByRole)
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(editedById) ||
+                string.IsNullOrWhiteSpace(editedByName) ||
+                string.IsNullOrWhiteSpace(editedByRole))
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Unable to determine the authenticated user."
+                };
+            }
+
             var course = await _repo.GetCourseById(courseId);
 
             if (course == null)
@@ -299,7 +313,10 @@ public class CourseService : ICourseService
                 courseId,
                 request,
                 introVideoUrl,
-                courseIconUrl);
+                courseIconUrl,
+                editedById,
+                editedByName,
+                editedByRole);
 
             if (!updated)
             {
@@ -315,6 +332,71 @@ public class CourseService : ICourseService
                 Success = true,
                 Message = "Course Updated Successfully.",
                 Data = await _repo.GetCourseById(courseId)
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ServiceResponse
+            {
+                Success = false,
+                Message = ex.Message
+            };
+        }
+    }
+
+    //=========================================
+    // Delete Course
+    //=========================================
+
+    public async Task<ServiceResponse> DeleteCourse(
+        int courseId,
+        string deletedById,
+        string deletedByName,
+        string deletedByRole)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(deletedById) ||
+                string.IsNullOrWhiteSpace(deletedByName) ||
+                string.IsNullOrWhiteSpace(deletedByRole))
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Unable to determine the authenticated user."
+                };
+            }
+
+            var course = await _repo.GetCourseById(courseId);
+
+            if (course == null)
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Course Not Found."
+                };
+            }
+
+            var deleted = await _repo.DeleteCourse(
+                courseId,
+                deletedById,
+                deletedByName,
+                deletedByRole);
+
+            if (!deleted)
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Delete Failed."
+                };
+            }
+
+            return new ServiceResponse
+            {
+                Success = true,
+                Message = "Course Deleted Successfully."
             };
         }
         catch (Exception ex)

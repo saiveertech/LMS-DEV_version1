@@ -28,7 +28,23 @@ CREATE TABLE LMS.Courses
 
     CreatedByRole NVARCHAR(50) NOT NULL,
 
+    EditedById NVARCHAR(50) NULL,
+
+    EditedByName NVARCHAR(200) NULL,
+
+    EditedByRole NVARCHAR(50) NULL,
+
+    DeletedById NVARCHAR(50) NULL,
+
+    DeletedByName NVARCHAR(200) NULL,
+
+    DeletedByRole NVARCHAR(50) NULL,
+
+    DeletedAt DATETIME2 NULL,
+
     IsActive BIT NOT NULL DEFAULT 1,
+
+    IsDeleted BIT NOT NULL DEFAULT 0,
 
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
 

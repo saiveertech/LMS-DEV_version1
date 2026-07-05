@@ -1,4 +1,4 @@
-CREATE PROCEDURE LMS.SP_UpdateAssignment
+ALTER PROCEDURE LMS.SP_UpdateAssignment
 (
     @AssignmentId INT,
     @Title NVARCHAR(200) = NULL,
@@ -9,7 +9,10 @@ CREATE PROCEDURE LMS.SP_UpdateAssignment
     @PassPercentage DECIMAL(5,2) = NULL,
     @WwEnvClientId NVARCHAR(100) = NULL,
     @AssessmentIconUrl NVARCHAR(MAX) = NULL,
-    @Tags NVARCHAR(MAX) = NULL
+    @Tags NVARCHAR(MAX) = NULL,
+    @EditedById NVARCHAR(50),
+    @EditedByName NVARCHAR(200),
+    @EditedByRole NVARCHAR(50)
 )
 AS
 BEGIN
@@ -27,6 +30,9 @@ SET
     WwEnvClientId = ISNULL(@WwEnvClientId, WwEnvClientId),
     AssessmentIconUrl = ISNULL(@AssessmentIconUrl, AssessmentIconUrl),
     Tags = ISNULL(@Tags, Tags),
+    EditedById = @EditedById,
+    EditedByName = @EditedByName,
+    EditedByRole = @EditedByRole,
     UpdatedAt = SYSUTCDATETIME()
 WHERE AssignmentId = @AssignmentId
     AND IsDeleted = 0;

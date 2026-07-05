@@ -1,3 +1,4 @@
+using LMS.Application.Common;
 using LMS.Application.Features.Auth.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -54,7 +55,13 @@ public IActionResult GenerateToken(
             request.Email),
 
         new Claim(ClaimTypes.Role,
-            "Admin")
+            "Admin"),
+
+        new Claim(AppClaimTypes.UserId,
+            "bootstrap-admin"),
+
+        new Claim(AppClaimTypes.FullName,
+            "Bootstrap Admin")
     };
 
     var expiry = DateTime.UtcNow
