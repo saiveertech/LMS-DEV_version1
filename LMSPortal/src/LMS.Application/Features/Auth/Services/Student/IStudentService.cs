@@ -12,4 +12,8 @@ public interface IStudentService
     Task<ServiceResponse> UpdateStudent(
         string studentId,
         UpdateStudentRequest request);
+
+    Task<ServiceResponse> EnrollCourse(EnrollCourseRequest request);
+
+    Task<object?> GetEnrolledCourses(string studentId);
 }

@@ -62,32 +62,100 @@ public class AuthController : ControllerBase
         }
     }
 
-    [Authorize]
+    // Public — sets a new password for the given email. Only succeeds if
+    // that email was verified via verify-otp within the last 15 minutes.
+    // No OTP or old password required here.
+    [AllowAnonymous]
 [HttpPost("reset-password")]
 public async Task<IActionResult> ResetPassword(
     ResetPasswordRequest request)
 {
-    var result = await _repo.ResetPassword(
+    var (success, message) = await _repo.ResetPasswordAfterVerification(
         request.Email,
-        request.OldPassword,
         request.NewPassword);
 
-    if (!result)
+    if (!success)
     {
         return BadRequest(new
         {
             Success = false,
-            Message = "Invalid Email or Old Password"
+            Message = message
         });
     }
 
     return Ok(new
     {
         Success = true,
-        Message = "Password Updated Successfully"
+        Message = message
     });
 }
-    
+
+    // Public — accepts a registered email and, if found among
+    // Students/Trainers/Admin, emails a one-time OTP for password reset.
+    // Always returns a generic success message to avoid leaking whether
+    // an email is registered.
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
+    {
+        try
+        {
+            await _repo.GenerateAndSendOtp(request.Email);
+
+            return Ok(new
+            {
+                Success = true,
+                Message = "If an account with that email exists, an OTP has been sent."
+            });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new
+            {
+                Success = false,
+                Message = "An error occurred while processing your request"
+            });
+        }
+    }
+
+    // Public — verifies the OTP sent via forgot-password. On success,
+    // marks the email verified for 15 minutes, during which reset-password
+    // can be called with just { Email, NewPassword }.
+    [AllowAnonymous]
+    [HttpPost("verify-otp")]
+    public async Task<IActionResult> VerifyOtp(VerifyOtpRequest request)
+    {
+        try
+        {
+            var (success, message) = await _repo.VerifyOtp(
+                request.Email,
+                request.Otp);
+
+            if (!success)
+            {
+                return BadRequest(new
+                {
+                    Success = false,
+                    Message = message
+                });
+            }
+
+            return Ok(new
+            {
+                Success = true,
+                Message = message
+            });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new
+            {
+                Success = false,
+                Message = "An error occurred while verifying the OTP"
+            });
+        }
+    }
+
     private (string Value, DateTime ExpiresAt) GenerateJwtToken(
         string email,
         string role,

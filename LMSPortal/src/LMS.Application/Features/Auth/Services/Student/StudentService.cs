@@ -244,4 +244,58 @@ public class StudentService : IStudentService
             };
         }
     }
+
+    //=========================================
+    // Enroll Student in a Course
+    //=========================================
+
+    public async Task<ServiceResponse> EnrollCourse(EnrollCourseRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.StudentId))
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Student ID is required."
+                };
+            }
+
+            if (request.CourseId <= 0)
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "A valid Course ID is required."
+                };
+            }
+
+            var result = await _repo.EnrollCourse(request);
+
+            return new ServiceResponse
+            {
+                Success = true,
+                Message = "Student enrolled in course successfully.",
+                Data = result
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ServiceResponse
+            {
+                Success = false,
+                Message = ex.Message
+            };
+        }
+    }
+
+    //=========================================
+    // Get Enrolled Courses for a Student
+    //=========================================
+
+    public async Task<object?> GetEnrolledCourses(string studentId)
+    {
+        return await _repo.GetEnrolledCourses(studentId);
+    }
 }

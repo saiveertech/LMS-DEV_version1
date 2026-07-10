@@ -200,4 +200,84 @@ public async Task<bool> UpdateStudent(
     return rows > 0;
 }
 
+public async Task<object> EnrollCourse(EnrollCourseRequest request)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_EnrollStudentCourse", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    var enrollmentIdParam =
+        new SqlParameter("@EnrollmentId", SqlDbType.NVarChar, 50)
+        {
+            Direction = ParameterDirection.Output
+        };
+
+    cmd.Parameters.Add(enrollmentIdParam);
+    cmd.Parameters.AddWithValue("@StudentId", request.StudentId);
+    cmd.Parameters.AddWithValue("@CourseId", request.CourseId);
+
+    await conn.OpenAsync();
+
+    await cmd.ExecuteNonQueryAsync();
+
+    string enrollmentId = (string)enrollmentIdParam.Value;
+
+    return new
+    {
+        EnrollmentId = enrollmentId,
+        StudentId = request.StudentId,
+        CourseId = request.CourseId,
+        CourseStatus = "Enrolled",
+        CertificateStatus = "Pending",
+        EnrollmentDate = DateTime.UtcNow
+    };
+}
+
+public async Task<object?> GetEnrolledCourses(string studentId)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_GetStudentEnrolledCourses", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
+
+    await conn.OpenAsync();
+
+    using var reader = await cmd.ExecuteReaderAsync();
+
+    var enrollments = new List<object>();
+
+    while (await reader.ReadAsync())
+    {
+        enrollments.Add(new
+        {
+            EnrollmentId = reader["EnrollmentId"],
+            StudentId = reader["StudentId"],
+            CourseId = reader["CourseId"],
+            CourseTitle = reader["CourseTitle"],
+            CourseDescription = reader["CourseDescription"] as string,
+            CourseIconUrl = reader["CourseIconUrl"] as string,
+            Tags = reader["Tags"] as string,
+            CompletionTimeSeconds = Convert.ToInt32(reader["CompletionTimeSeconds"]),
+            PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
+            EnrollmentDate = Convert.ToDateTime(reader["EnrollmentDate"]),
+            CourseStatus = reader["CourseStatus"],
+            CertificateStatus = reader["CertificateStatus"],
+            CertificateIssueDate = reader["CertificateIssueDate"] == DBNull.Value
+                ? (DateTime?)null
+                : Convert.ToDateTime(reader["CertificateIssueDate"]),
+            CreatedAt = Convert.ToDateTime(reader["CreatedAt"]),
+            UpdatedDate = reader["UpdatedDate"] == DBNull.Value
+                ? (DateTime?)null
+                : Convert.ToDateTime(reader["UpdatedDate"])
+        });
+    }
+
+    return enrollments;
+}
+
 }

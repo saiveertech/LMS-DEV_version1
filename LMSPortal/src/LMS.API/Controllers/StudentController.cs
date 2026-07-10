@@ -78,4 +78,46 @@ public class StudentController : ControllerBase
 
         return Ok(result);
     }
+
+    // ─── Course Enrollment ───────────────────────────────────────────────────
+
+    [HttpPost("enroll-course")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> EnrollCourse(
+        [FromBody] EnrollCourseRequest request)
+    {
+        var result = await _service.EnrollCourse(request);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            result);
+    }
+
+    [HttpGet("enrolled-courses/{studentId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetEnrolledCourses(string studentId)
+    {
+        if (string.IsNullOrWhiteSpace(studentId))
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = "Student ID is required."
+            });
+        }
+
+        var result = await _service.GetEnrolledCourses(studentId);
+
+        return Ok(new
+        {
+            Success = true,
+            StudentId = studentId,
+            Data = result
+        });
+    }
 }

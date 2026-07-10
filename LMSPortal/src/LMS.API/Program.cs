@@ -139,6 +139,8 @@ builder.Services.AddSwaggerGen(options =>
             new List<string>()
         }
     });
+
+    options.OperationFilter<LMS.API.Swagger.AllowAnonymousOperationFilter>();
 });
 #endregion
 

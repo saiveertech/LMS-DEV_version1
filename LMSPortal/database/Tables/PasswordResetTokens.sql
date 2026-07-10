@@ -1,0 +1,24 @@
+CREATE TABLE LMS.PasswordResetTokens
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+
+    Email NVARCHAR(200) NOT NULL,
+
+    Role NVARCHAR(50) NOT NULL,
+
+    OtpHash NVARCHAR(200) NOT NULL,
+
+    ExpiresAt DATETIME2 NOT NULL,
+
+    IsUsed BIT NOT NULL DEFAULT 0,
+
+    Attempts INT NOT NULL DEFAULT 0,
+
+    IsVerified BIT NOT NULL DEFAULT 0,
+
+    CreatedDate DATETIME2 NOT NULL DEFAULT GETDATE()
+);
+GO
+
+CREATE INDEX IX_PasswordResetTokens_Email ON LMS.PasswordResetTokens(Email);
+GO
