@@ -13,10 +13,19 @@ CREATE TABLE LMS.StudentCourseEnrollments
     CourseStatus NVARCHAR(50) NOT NULL DEFAULT 'Enrolled',
     -- Allowed values: Enrolled | In Progress | Completed
 
+    RegistrationStatus NVARCHAR(50) NOT NULL DEFAULT 'Registered',
+    -- Allowed values: Registered | InProgress | Completed
+
     CertificateStatus NVARCHAR(50) NOT NULL DEFAULT 'Pending',
     -- Allowed values: Pending | Issued
 
     CertificateIssueDate DATETIME2 NULL,
+
+    CompletedLessons INT NOT NULL DEFAULT 0,
+
+    TotalLessons INT NOT NULL DEFAULT 0,
+
+    AssessmentScore DECIMAL(5,2) NULL,
 
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
 

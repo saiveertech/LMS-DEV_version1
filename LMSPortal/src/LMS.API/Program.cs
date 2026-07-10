@@ -4,23 +4,31 @@ using LMS.Application.Features.Assignment.Services;
 using LMS.Application.Features.Auth.Services.Admin;
 using LMS.Application.Features.Auth.Services.Student;
 using LMS.Application.Features.Auth.Services.Trainer;
+using LMS.Application.Features.Certificate.Services;
 using LMS.Application.Features.Course.Services;
+using LMS.Application.Features.CourseStudentTracking.Services;
 using LMS.Infrastructure.Authentication;
 using LMS.Infrastructure.Configurations;
 using LMS.Infrastructure.Email;
 using LMS.Infrastructure.Repositories.Admin;
 using LMS.Infrastructure.Repositories.Assignment;
 using LMS.Infrastructure.Repositories.Auth;
+using LMS.Infrastructure.Repositories.Certificate;
 using LMS.Infrastructure.Repositories.Course;
+using LMS.Infrastructure.Repositories.CourseStudentTracking;
 using LMS.Infrastructure.Repositories.Student;
 using LMS.Infrastructure.Repositories.Trainer;
+using LMS.Infrastructure.Services;
 using LMS.Infrastructure.Storage;
+using QuestPDF.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
 using System.Text;
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -97,6 +105,13 @@ builder.Services.AddScoped<ICourseService, CourseService>();
 
 builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
 builder.Services.AddScoped<IAssignmentService, AssignmentService>();
+
+builder.Services.AddScoped<ICertificateRepository, CertificateRepository>();
+builder.Services.AddScoped<ICertificateService, CertificateService>();
+builder.Services.AddScoped<IPdfCertificateService, PdfCertificateService>();
+
+builder.Services.AddScoped<ICourseStudentTrackingRepository, CourseStudentTrackingRepository>();
+builder.Services.AddScoped<ICourseStudentTrackingService, CourseStudentTrackingService>();
 
 builder.Services.Configure<AzureStorageSettings>(
     builder.Configuration.GetSection("AzureStorage"));

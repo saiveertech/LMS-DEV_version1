@@ -55,4 +55,45 @@ public class AzureBlobStorageService : IBlobStorageService
 
         return sasUri.ToString();
     }
+
+    public async Task<string> UploadStreamAsync(
+        Stream stream,
+        string containerName,
+        string blobName,
+        string contentType)
+    {
+        var containerClient = new BlobContainerClient(
+            _settings.ConnectionString,
+            containerName);
+
+        await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
+
+        var blobClient = containerClient.GetBlobClient(blobName);
+
+        stream.Position = 0;
+
+        await blobClient.UploadAsync(
+            stream,
+            new BlobHttpHeaders { ContentType = contentType });
+
+        if (!blobClient.CanGenerateSasUri)
+        {
+            throw new InvalidOperationException(
+                "Cannot generate a SAS URI for the uploaded blob. The storage connection string must include an account key.");
+        }
+
+        var sasBuilder = new BlobSasBuilder
+        {
+            BlobContainerName = containerClient.Name,
+            BlobName = blobClient.Name,
+            Resource = "b",
+            ExpiresOn = DateTimeOffset.UtcNow.AddYears(10)
+        };
+
+        sasBuilder.SetPermissions(BlobSasPermissions.Read);
+
+        var sasUri = blobClient.GenerateSasUri(sasBuilder);
+
+        return sasUri.ToString();
+    }
 }

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\LMS.Application\LMS.Application.csproj" />
@@ -15,6 +15,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.9" />
     <PackageReference Include="sib_api_v3_sdk" Version="4.0.2" />
+    <PackageReference Include="QuestPDF" Version="2024.12.1" />
   </ItemGroup>
 
   <PropertyGroup>

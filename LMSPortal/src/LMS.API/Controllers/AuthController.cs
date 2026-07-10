@@ -95,7 +95,7 @@ public async Task<IActionResult> ResetPassword(
     // Always returns a generic success message to avoid leaking whether
     // an email is registered.
     [AllowAnonymous]
-    [HttpPost("forgot-password")]
+    [HttpPost("send-otp")]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
     {
         try
