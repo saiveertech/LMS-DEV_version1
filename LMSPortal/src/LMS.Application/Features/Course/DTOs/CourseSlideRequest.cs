@@ -17,7 +17,7 @@ public class CourseSlideRequest
     public SlideMediaType MediaType { get; set; }
 
     // Required when MediaType is Video.
-    public IFormFile? VideoFile { get; set; }
+    public IFormFile? MediaFile { get; set; }
 
     // Required when MediaType is Url (e.g. a YouTube link).
     public string? MediaUrl { get; set; }

@@ -409,13 +409,13 @@ public class CourseService : ICourseService
 
             if (slide.MediaType == SlideMediaType.Video)
             {
-                if (slide.VideoFile == null)
+                if (slide.MediaFile == null)
                 {
                     return (null, $"Slide '{slide.Title}' requires a video file.");
                 }
 
                 var validationError = ValidateFile(
-                    slide.VideoFile,
+                    slide.MediaFile,
                     AllowedVideoExtensions,
                     MaxVideoSizeBytes,
                     $"Slide '{slide.Title}' video");
@@ -426,7 +426,7 @@ public class CourseService : ICourseService
                 }
 
                 mediaUrl = await _blobStorageService.UploadFileAsync(
-                    slide.VideoFile,
+                    slide.MediaFile,
                     "course-slides");
             }
             else
