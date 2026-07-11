@@ -1,4 +1,3 @@
-using System.Text.Json;
 using LMS.Application.Common;
 using LMS.Application.Features.Course.DTOs;
 using Microsoft.AspNetCore.Http;
@@ -76,29 +75,15 @@ public class CourseService : ICourseService
                 };
             }
 
-            if (request.PassPercentage < 0 || request.PassPercentage > 100)
+            var (processedSlides, slidesError) = await ProcessSlidesAsync(request.Slides);
+
+            if (slidesError != null)
             {
                 return new ServiceResponse
                 {
                     Success = false,
-                    Message = "Pass Percentage must be between 0 and 100."
+                    Message = slidesError
                 };
-            }
-
-            if (!string.IsNullOrWhiteSpace(request.SlidesJson))
-            {
-                try
-                {
-                    using var _ = JsonDocument.Parse(request.SlidesJson);
-                }
-                catch (JsonException)
-                {
-                    return new ServiceResponse
-                    {
-                        Success = false,
-                        Message = "Slides Json is not valid JSON."
-                    };
-                }
             }
 
             string introVideoUrl = string.Empty;
@@ -152,6 +137,7 @@ public class CourseService : ICourseService
                 request,
                 introVideoUrl,
                 courseIconUrl,
+                processedSlides!,
                 createdById,
                 createdByName,
                 createdByRole);
@@ -236,30 +222,22 @@ public class CourseService : ICourseService
                 };
             }
 
-            if (request.PassPercentage.HasValue &&
-                (request.PassPercentage.Value < 0 || request.PassPercentage.Value > 100))
-            {
-                return new ServiceResponse
-                {
-                    Success = false,
-                    Message = "Pass Percentage must be between 0 and 100."
-                };
-            }
+            List<CourseSlideInput>? processedSlides = null;
 
-            if (!string.IsNullOrWhiteSpace(request.SlidesJson))
+            if (request.Slides != null)
             {
-                try
-                {
-                    using var _ = JsonDocument.Parse(request.SlidesJson);
-                }
-                catch (JsonException)
+                var (slides, slidesError) = await ProcessSlidesAsync(request.Slides);
+
+                if (slidesError != null)
                 {
                     return new ServiceResponse
                     {
                         Success = false,
-                        Message = "Slides Json is not valid JSON."
+                        Message = slidesError
                     };
                 }
+
+                processedSlides = slides;
             }
 
             string? introVideoUrl = null;
@@ -314,6 +292,7 @@ public class CourseService : ICourseService
                 request,
                 introVideoUrl,
                 courseIconUrl,
+                processedSlides,
                 editedById,
                 editedByName,
                 editedByRole);
@@ -407,6 +386,70 @@ public class CourseService : ICourseService
                 Message = ex.Message
             };
         }
+    }
+
+    private async Task<(List<CourseSlideInput>? Slides, string? Error)> ProcessSlidesAsync(
+        List<CourseSlideRequest>? slides)
+    {
+        if (slides == null || slides.Count == 0)
+        {
+            return (new List<CourseSlideInput>(), null);
+        }
+
+        var processed = new List<CourseSlideInput>();
+
+        foreach (var slide in slides)
+        {
+            if (string.IsNullOrWhiteSpace(slide.Title))
+            {
+                return (null, "Each slide requires a title.");
+            }
+
+            string mediaUrl;
+
+            if (slide.MediaType == SlideMediaType.Video)
+            {
+                if (slide.VideoFile == null)
+                {
+                    return (null, $"Slide '{slide.Title}' requires a video file.");
+                }
+
+                var validationError = ValidateFile(
+                    slide.VideoFile,
+                    AllowedVideoExtensions,
+                    MaxVideoSizeBytes,
+                    $"Slide '{slide.Title}' video");
+
+                if (validationError != null)
+                {
+                    return (null, validationError);
+                }
+
+                mediaUrl = await _blobStorageService.UploadFileAsync(
+                    slide.VideoFile,
+                    "course-slides");
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(slide.MediaUrl))
+                {
+                    return (null, $"Slide '{slide.Title}' requires a media URL.");
+                }
+
+                mediaUrl = slide.MediaUrl;
+            }
+
+            processed.Add(new CourseSlideInput
+            {
+                Title = slide.Title,
+                Description = slide.Description,
+                MediaType = slide.MediaType.ToString(),
+                MediaUrl = mediaUrl,
+                SortOrder = slide.SortOrder
+            });
+        }
+
+        return (processed, null);
     }
 
     private static string? ValidateFile(

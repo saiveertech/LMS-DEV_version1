@@ -5,6 +5,7 @@ CREATE PROCEDURE LMS.SP_GenerateCertificate
     @StudentEmail       NVARCHAR(200),
     @CourseId            INT,
     @CourseName         NVARCHAR(200),
+    @AssignmentId       INT,
     @CompletionPercentage DECIMAL(5,2),
     @AssessmentScore    DECIMAL(5,2),
     @PassPercentage     DECIMAL(5,2),
@@ -35,6 +36,15 @@ BEGIN
     )
     BEGIN
         RAISERROR('Course not found or inactive.', 16, 1);
+        RETURN;
+    END
+
+    -- Validate Assignment exists
+    IF NOT EXISTS (
+        SELECT 1 FROM LMS.Assignments WHERE AssignmentId = @AssignmentId AND IsDeleted = 0
+    )
+    BEGIN
+        RAISERROR('Assignment not found.', 16, 1);
         RETURN;
     END
 
@@ -76,6 +86,7 @@ BEGIN
         StudentEmail,
         CourseId,
         CourseName,
+        AssignmentId,
         CompletionPercentage,
         AssessmentScore,
         PassPercentage,
@@ -94,6 +105,7 @@ BEGIN
         @StudentEmail,
         @CourseId,
         @CourseName,
+        @AssignmentId,
         @CompletionPercentage,
         @AssessmentScore,
         @PassPercentage,
@@ -143,6 +155,7 @@ BEGIN
         StudentEmail,
         CourseId,
         CourseName,
+        AssignmentId,
         CompletionPercentage,
         AssessmentScore,
         PassPercentage,

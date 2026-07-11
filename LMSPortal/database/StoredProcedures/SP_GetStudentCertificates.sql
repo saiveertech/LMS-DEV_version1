@@ -15,6 +15,7 @@ BEGIN
         StudentEmail,
         CourseId,
         CourseName,
+        AssignmentId,
         CompletionPercentage,
         AssessmentScore,
         PassPercentage,

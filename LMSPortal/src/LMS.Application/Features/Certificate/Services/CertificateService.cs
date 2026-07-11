@@ -1,4 +1,5 @@
 using LMS.Application.Common;
+using LMS.Application.Features.Assignment.Services;
 using LMS.Application.Features.Certificate.DTOs;
 using LMS.Application.Features.Course.Services;
 
@@ -8,7 +9,8 @@ public class CertificateService : ICertificateService
 {
     private readonly ICertificateRepository _repo;
     private readonly ICourseRepository _courseRepo;
-    private readonly IPdfCertificateService _pdfService;
+    private readonly IAssignmentRepository _assignmentRepo;
+    private readonly ICertificateTemplateRenderer _templateRenderer;
     private readonly IBlobStorageService _blobService;
 
     private const string CertificatesContainer = "certificates";
@@ -16,12 +18,14 @@ public class CertificateService : ICertificateService
     public CertificateService(
         ICertificateRepository repo,
         ICourseRepository courseRepo,
-        IPdfCertificateService pdfService,
+        IAssignmentRepository assignmentRepo,
+        ICertificateTemplateRenderer templateRenderer,
         IBlobStorageService blobService)
     {
         _repo = repo;
         _courseRepo = courseRepo;
-        _pdfService = pdfService;
+        _assignmentRepo = assignmentRepo;
+        _templateRenderer = templateRenderer;
         _blobService = blobService;
     }
 
@@ -57,6 +61,15 @@ public class CertificateService : ICertificateService
                 };
             }
 
+            if (request.AssignmentId <= 0)
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "A valid Assignment ID is required."
+                };
+            }
+
             // ── Business Rule: Completion must be 100% ──
 
             if (request.CompletionPercentage < 100)
@@ -87,8 +100,23 @@ public class CertificateService : ICertificateService
             var courseName = courseType.GetProperty("Title")?.GetValue(courseObj) as string
                 ?? string.Empty;
 
+            // ── Fetch assignment details for the pass-percentage gate ──
+
+            var assignmentObj = await _assignmentRepo.GetAssignments(request.AssignmentId);
+
+            if (assignmentObj == null)
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Assignment not found."
+                };
+            }
+
+            var assignmentType = assignmentObj.GetType();
+
             var passPercentage = Convert.ToDecimal(
-                courseType.GetProperty("PassPercentage")?.GetValue(courseObj) ?? 0m);
+                assignmentType.GetProperty("PassPercentage")?.GetValue(assignmentObj) ?? 0m);
 
             // ── Business Rule: Assessment score >= Pass Percentage ──
 
@@ -112,14 +140,16 @@ public class CertificateService : ICertificateService
             var tempCertId = $"CERT-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
             var tempCredId = $"CRED-SK-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
 
-            // ── Generate PDF ──
+            // ── Generate PDF from the uploaded certificate template ──
 
-            var pdfBytes = _pdfService.GenerateCertificatePdf(
+            var pngBytes = await _templateRenderer.RenderPngAsync(
                 studentName,
                 courseName,
                 request.CompletionDate,
                 tempCredId,
                 tempCertId);
+
+            var pdfBytes = _templateRenderer.WrapPngInPdf(pngBytes);
 
             // ── Upload to Azure Blob Storage ──
 
@@ -144,6 +174,7 @@ public class CertificateService : ICertificateService
                 studentName,
                 studentEmail,
                 courseName,
+                request.AssignmentId,
                 passPercentage,
                 createdById,
                 createdByName,

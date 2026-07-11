@@ -6,6 +6,8 @@ public class GenerateCertificateRequest
 
     public int CourseId { get; set; }
 
+    public int AssignmentId { get; set; }
+
     public decimal CompletionPercentage { get; set; }
 
     public decimal AssessmentScore { get; set; }

@@ -298,4 +298,58 @@ public class StudentService : IStudentService
     {
         return await _repo.GetEnrolledCourses(studentId);
     }
+
+    //=========================================
+    // Enroll Student in an Assignment
+    //=========================================
+
+    public async Task<ServiceResponse> EnrollAssignment(EnrollAssignmentRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.StudentId))
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Student ID is required."
+                };
+            }
+
+            if (request.AssignmentId <= 0)
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "A valid Assignment ID is required."
+                };
+            }
+
+            var result = await _repo.EnrollAssignment(request);
+
+            return new ServiceResponse
+            {
+                Success = true,
+                Message = "Student enrolled in assignment successfully.",
+                Data = result
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ServiceResponse
+            {
+                Success = false,
+                Message = ex.Message
+            };
+        }
+    }
+
+    //=========================================
+    // Get Enrolled Assignments for a Student
+    //=========================================
+
+    public async Task<object?> GetEnrolledAssignments(string studentId)
+    {
+        return await _repo.GetEnrolledAssignments(studentId);
+    }
 }

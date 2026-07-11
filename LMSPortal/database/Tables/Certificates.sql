@@ -16,6 +16,8 @@ CREATE TABLE LMS.Certificates
 
     CourseName NVARCHAR(200) NOT NULL,
 
+    AssignmentId INT NOT NULL,
+
     CompletionPercentage DECIMAL(5,2) NOT NULL,
 
     AssessmentScore DECIMAL(5,2) NOT NULL,
@@ -47,6 +49,10 @@ CREATE TABLE LMS.Certificates
     CONSTRAINT FK_Certificates_Course
         FOREIGN KEY (CourseId)
         REFERENCES LMS.Courses(Id),
+
+    CONSTRAINT FK_Certificates_Assignment
+        FOREIGN KEY (AssignmentId)
+        REFERENCES LMS.Assignments(AssignmentId),
 
     CONSTRAINT UQ_StudentCourse_Certificate
         UNIQUE (StudentId, CourseId)

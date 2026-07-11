@@ -25,6 +25,7 @@ public class CourseRepository : ICourseRepository
         CreateCourseRequest request,
         string introVideoUrl,
         string courseIconUrl,
+        List<CourseSlideInput> slides,
         string createdById,
         string createdByName,
         string createdByRole)
@@ -49,21 +50,7 @@ public class CourseRepository : ICourseRepository
                 ? DBNull.Value
                 : introVideoUrl);
 
-        cmd.Parameters.AddWithValue(
-            "@SlidesJson",
-            string.IsNullOrWhiteSpace(request.SlidesJson)
-                ? DBNull.Value
-                : request.SlidesJson);
-
         cmd.Parameters.AddWithValue("@CompletionTimeSeconds", request.CompletionTimeSeconds);
-
-        cmd.Parameters.AddWithValue("@PassPercentage", request.PassPercentage);
-
-        cmd.Parameters.AddWithValue(
-            "@WwEnvClientId",
-            string.IsNullOrWhiteSpace(request.WwEnvClientId)
-                ? DBNull.Value
-                : request.WwEnvClientId);
 
         cmd.Parameters.AddWithValue(
             "@CourseIconUrl",
@@ -84,6 +71,8 @@ public class CourseRepository : ICourseRepository
         await conn.OpenAsync();
 
         var newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+        await InsertSlides(conn, newId, slides);
 
         return await GetCourseById(newId) ?? new { Id = newId };
     }
@@ -112,10 +101,7 @@ public class CourseRepository : ICourseRepository
                 Title = reader["Title"] as string ?? string.Empty,
                 Description = reader["Description"] as string,
                 IntroVideoUrl = reader["IntroVideoUrl"] as string,
-                SlidesJson = reader["SlidesJson"] as string,
                 CompletionTimeSeconds = Convert.ToInt32(reader["CompletionTimeSeconds"]),
-                PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
-                WwEnvClientId = reader["WwEnvClientId"] as string,
                 CourseIconUrl = reader["CourseIconUrl"] as string,
                 Tags = reader["Tags"] as string,
                 CourseStatus = reader["CourseStatus"] as string ?? string.Empty,
@@ -135,6 +121,28 @@ public class CourseRepository : ICourseRepository
             });
         }
 
+        if (await reader.NextResultAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                var slideCourseId = Convert.ToInt32(reader["CourseId"]);
+
+                var course = courses.FirstOrDefault(c => c.Id == slideCourseId);
+
+                course?.Slides.Add(new CourseSlideResponse
+                {
+                    Id = Convert.ToInt32(reader["Id"]),
+                    CourseId = slideCourseId,
+                    Title = reader["Title"] as string ?? string.Empty,
+                    Description = reader["Description"] as string,
+                    MediaType = reader["MediaType"] as string ?? string.Empty,
+                    MediaUrl = reader["MediaUrl"] as string ?? string.Empty,
+                    SortOrder = Convert.ToInt32(reader["SortOrder"]),
+                    CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
+                });
+            }
+        }
+
         if (courseId.HasValue)
             return courses.Count > 0 ? courses[0] : null;
 
@@ -146,6 +154,7 @@ public class CourseRepository : ICourseRepository
         UpdateCourseRequest request,
         string? introVideoUrl,
         string? courseIconUrl,
+        List<CourseSlideInput>? slides,
         string editedById,
         string editedByName,
         string editedByRole)
@@ -177,28 +186,10 @@ public class CourseRepository : ICourseRepository
                 : introVideoUrl);
 
         cmd.Parameters.AddWithValue(
-            "@SlidesJson",
-            string.IsNullOrWhiteSpace(request.SlidesJson)
-                ? DBNull.Value
-                : request.SlidesJson);
-
-        cmd.Parameters.AddWithValue(
             "@CompletionTimeSeconds",
             request.CompletionTimeSeconds.HasValue
                 ? request.CompletionTimeSeconds.Value
                 : DBNull.Value);
-
-        cmd.Parameters.AddWithValue(
-            "@PassPercentage",
-            request.PassPercentage.HasValue
-                ? request.PassPercentage.Value
-                : DBNull.Value);
-
-        cmd.Parameters.AddWithValue(
-            "@WwEnvClientId",
-            string.IsNullOrWhiteSpace(request.WwEnvClientId)
-                ? DBNull.Value
-                : request.WwEnvClientId);
 
         cmd.Parameters.AddWithValue(
             "@CourseIconUrl",
@@ -234,6 +225,12 @@ public class CourseRepository : ICourseRepository
 
         int rows = Convert.ToInt32(result);
 
+        if (rows > 0 && slides != null)
+        {
+            await DeleteSlides(conn, courseId);
+            await InsertSlides(conn, courseId, slides);
+        }
+
         return rows > 0;
     }
 
@@ -261,5 +258,44 @@ public class CourseRepository : ICourseRepository
         int rows = Convert.ToInt32(result);
 
         return rows > 0;
+    }
+
+    private static async Task InsertSlides(
+        SqlConnection conn,
+        int courseId,
+        List<CourseSlideInput> slides)
+    {
+        foreach (var slide in slides)
+        {
+            using var cmd = new SqlCommand("LMS.SP_AddCourseSlide", conn);
+
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            cmd.Parameters.AddWithValue("@CourseId", courseId);
+            cmd.Parameters.AddWithValue("@Title", slide.Title);
+
+            cmd.Parameters.AddWithValue(
+                "@Description",
+                string.IsNullOrWhiteSpace(slide.Description)
+                    ? DBNull.Value
+                    : slide.Description);
+
+            cmd.Parameters.AddWithValue("@MediaType", slide.MediaType);
+            cmd.Parameters.AddWithValue("@MediaUrl", slide.MediaUrl);
+            cmd.Parameters.AddWithValue("@SortOrder", slide.SortOrder);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+    }
+
+    private static async Task DeleteSlides(SqlConnection conn, int courseId)
+    {
+        using var cmd = new SqlCommand("LMS.SP_DeleteCourseSlidesByCourse", conn);
+
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@CourseId", courseId);
+
+        await cmd.ExecuteNonQueryAsync();
     }
 }

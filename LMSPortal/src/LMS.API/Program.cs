@@ -108,7 +108,11 @@ builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 
 builder.Services.AddScoped<ICertificateRepository, CertificateRepository>();
 builder.Services.AddScoped<ICertificateService, CertificateService>();
-builder.Services.AddScoped<IPdfCertificateService, PdfCertificateService>();
+
+builder.Services.AddScoped<ICertificateTemplateRenderer, CertificateTemplateRenderer>();
+
+builder.Services.Configure<CertificateTemplateLayoutOptions>(
+    builder.Configuration.GetSection("CertificateTemplateLayout"));
 
 builder.Services.AddScoped<ICourseStudentTrackingRepository, CourseStudentTrackingRepository>();
 builder.Services.AddScoped<ICourseStudentTrackingService, CourseStudentTrackingService>();

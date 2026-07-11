@@ -26,10 +26,6 @@ public class CourseStudentTrackingResponse
 
     public decimal? AssessmentScore { get; set; }
 
-    public decimal PassPercentage { get; set; }
-
-    public bool IsPassed { get; set; }
-
     public bool CertificateGenerated { get; set; }
 
     public string? CertificateId { get; set; }

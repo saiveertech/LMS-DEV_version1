@@ -263,13 +263,90 @@ public async Task<object?> GetEnrolledCourses(string studentId)
             CourseIconUrl = reader["CourseIconUrl"] as string,
             Tags = reader["Tags"] as string,
             CompletionTimeSeconds = Convert.ToInt32(reader["CompletionTimeSeconds"]),
-            PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
             EnrollmentDate = Convert.ToDateTime(reader["EnrollmentDate"]),
             CourseStatus = reader["CourseStatus"],
             CertificateStatus = reader["CertificateStatus"],
             CertificateIssueDate = reader["CertificateIssueDate"] == DBNull.Value
                 ? (DateTime?)null
                 : Convert.ToDateTime(reader["CertificateIssueDate"]),
+            CreatedAt = Convert.ToDateTime(reader["CreatedAt"]),
+            UpdatedDate = reader["UpdatedDate"] == DBNull.Value
+                ? (DateTime?)null
+                : Convert.ToDateTime(reader["UpdatedDate"])
+        });
+    }
+
+    return enrollments;
+}
+
+public async Task<object> EnrollAssignment(EnrollAssignmentRequest request)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_EnrollStudentAssignment", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    var enrollmentIdParam =
+        new SqlParameter("@EnrollmentId", SqlDbType.NVarChar, 50)
+        {
+            Direction = ParameterDirection.Output
+        };
+
+    cmd.Parameters.Add(enrollmentIdParam);
+    cmd.Parameters.AddWithValue("@StudentId", request.StudentId);
+    cmd.Parameters.AddWithValue("@AssignmentId", request.AssignmentId);
+
+    await conn.OpenAsync();
+
+    await cmd.ExecuteNonQueryAsync();
+
+    string enrollmentId = (string)enrollmentIdParam.Value;
+
+    return new
+    {
+        EnrollmentId = enrollmentId,
+        StudentId = request.StudentId,
+        AssignmentId = request.AssignmentId,
+        AssignmentStatus = "Enrolled",
+        EnrollmentDate = DateTime.UtcNow
+    };
+}
+
+public async Task<object?> GetEnrolledAssignments(string studentId)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_GetStudentEnrolledAssignments", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
+
+    await conn.OpenAsync();
+
+    using var reader = await cmd.ExecuteReaderAsync();
+
+    var enrollments = new List<object>();
+
+    while (await reader.ReadAsync())
+    {
+        enrollments.Add(new
+        {
+            EnrollmentId = reader["EnrollmentId"],
+            StudentId = reader["StudentId"],
+            AssignmentId = reader["AssignmentId"],
+            AssignmentTitle = reader["AssignmentTitle"],
+            AssignmentDescription = reader["AssignmentDescription"] as string,
+            AssessmentIconUrl = reader["AssessmentIconUrl"] as string,
+            Tags = reader["Tags"] as string,
+            CompletionTimeSeconds = Convert.ToInt32(reader["CompletionTimeSeconds"]),
+            PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
+            EnrollmentDate = Convert.ToDateTime(reader["EnrollmentDate"]),
+            AssignmentStatus = reader["AssignmentStatus"],
+            AssessmentScore = reader["AssessmentScore"] == DBNull.Value
+                ? (decimal?)null
+                : Convert.ToDecimal(reader["AssessmentScore"]),
             CreatedAt = Convert.ToDateTime(reader["CreatedAt"]),
             UpdatedDate = reader["UpdatedDate"] == DBNull.Value
                 ? (DateTime?)null

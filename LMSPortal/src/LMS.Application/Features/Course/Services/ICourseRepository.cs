@@ -8,6 +8,7 @@ public interface ICourseRepository
         CreateCourseRequest request,
         string introVideoUrl,
         string courseIconUrl,
+        List<CourseSlideInput> slides,
         string createdById,
         string createdByName,
         string createdByRole);
@@ -19,6 +20,7 @@ public interface ICourseRepository
         UpdateCourseRequest request,
         string? introVideoUrl,
         string? courseIconUrl,
+        List<CourseSlideInput>? slides,
         string editedById,
         string editedByName,
         string editedByRole);

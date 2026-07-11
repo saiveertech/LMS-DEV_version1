@@ -10,13 +10,9 @@ public class CourseResponse
 
     public string? IntroVideoUrl { get; set; }
 
-    public string? SlidesJson { get; set; }
+    public List<CourseSlideResponse> Slides { get; set; } = new();
 
     public int CompletionTimeSeconds { get; set; }
-
-    public decimal PassPercentage { get; set; }
-
-    public string? WwEnvClientId { get; set; }
 
     public string? CourseIconUrl { get; set; }
 

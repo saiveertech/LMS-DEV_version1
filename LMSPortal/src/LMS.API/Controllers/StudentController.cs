@@ -120,4 +120,46 @@ public class StudentController : ControllerBase
             Data = result
         });
     }
+
+    // ─── Assignment Enrollment ───────────────────────────────────────────────
+
+    [HttpPost("enroll-assignment")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> EnrollAssignment(
+        [FromBody] EnrollAssignmentRequest request)
+    {
+        var result = await _service.EnrollAssignment(request);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            result);
+    }
+
+    [HttpGet("enrolled-assignments/{studentId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetEnrolledAssignments(string studentId)
+    {
+        if (string.IsNullOrWhiteSpace(studentId))
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = "Student ID is required."
+            });
+        }
+
+        var result = await _service.GetEnrolledAssignments(studentId);
+
+        return Ok(new
+        {
+            Success = true,
+            StudentId = studentId,
+            Data = result
+        });
+    }
 }

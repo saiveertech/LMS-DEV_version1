@@ -18,6 +18,8 @@ public class CertificateResponse
 
     public string CourseName { get; set; } = string.Empty;
 
+    public int AssignmentId { get; set; }
+
     public decimal CompletionPercentage { get; set; }
 
     public decimal AssessmentScore { get; set; }

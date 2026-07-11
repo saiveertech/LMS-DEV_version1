@@ -10,4 +10,7 @@ public interface IStudentRepository
 
     Task<object> EnrollCourse(EnrollCourseRequest request);
     Task<object?> GetEnrolledCourses(string studentId);
+
+    Task<object> EnrollAssignment(EnrollAssignmentRequest request);
+    Task<object?> GetEnrolledAssignments(string studentId);
 }

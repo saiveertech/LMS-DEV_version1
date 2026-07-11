@@ -29,6 +29,7 @@ public class CertificateRepository : ICertificateRepository
         string studentName,
         string studentEmail,
         string courseName,
+        int assignmentId,
         decimal passPercentage,
         string createdById,
         string createdByName,
@@ -59,6 +60,7 @@ public class CertificateRepository : ICertificateRepository
         cmd.Parameters.AddWithValue("@StudentEmail", studentEmail);
         cmd.Parameters.AddWithValue("@CourseId", request.CourseId);
         cmd.Parameters.AddWithValue("@CourseName", courseName);
+        cmd.Parameters.AddWithValue("@AssignmentId", assignmentId);
         cmd.Parameters.AddWithValue("@CompletionPercentage", request.CompletionPercentage);
         cmd.Parameters.AddWithValue("@AssessmentScore", request.AssessmentScore);
         cmd.Parameters.AddWithValue("@PassPercentage", passPercentage);
@@ -180,6 +182,7 @@ public class CertificateRepository : ICertificateRepository
             StudentEmail = reader["StudentEmail"] as string ?? string.Empty,
             CourseId = Convert.ToInt32(reader["CourseId"]),
             CourseName = reader["CourseName"] as string ?? string.Empty,
+            AssignmentId = Convert.ToInt32(reader["AssignmentId"]),
             CompletionPercentage = Convert.ToDecimal(reader["CompletionPercentage"]),
             AssessmentScore = Convert.ToDecimal(reader["AssessmentScore"]),
             PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),

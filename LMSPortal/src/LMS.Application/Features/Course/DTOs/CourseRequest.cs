@@ -8,13 +8,9 @@ public class CreateCourseRequest
 
     public string? Description { get; set; }
 
-    public string? SlidesJson { get; set; }
+    public List<CourseSlideRequest>? Slides { get; set; }
 
     public int CompletionTimeSeconds { get; set; }
-
-    public decimal PassPercentage { get; set; }
-
-    public string? WwEnvClientId { get; set; }
 
     public string? Tags { get; set; }
 
@@ -35,13 +31,9 @@ public class UpdateCourseRequest
 
     public string? Description { get; set; }
 
-    public string? SlidesJson { get; set; }
+    public List<CourseSlideRequest>? Slides { get; set; }
 
     public int? CompletionTimeSeconds { get; set; }
-
-    public decimal? PassPercentage { get; set; }
-
-    public string? WwEnvClientId { get; set; }
 
     public string? Tags { get; set; }
 

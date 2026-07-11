@@ -11,4 +11,6 @@ public interface IBlobStorageService
         string containerName,
         string blobName,
         string contentType);
+
+    Task<byte[]> DownloadAsync(string containerName, string blobName);
 }

@@ -8,13 +8,7 @@ CREATE TABLE LMS.Courses
 
     IntroVideoUrl NVARCHAR(MAX) NULL,
 
-    SlidesJson NVARCHAR(MAX) NULL,
-
     CompletionTimeSeconds INT NOT NULL,
-
-    PassPercentage DECIMAL(5,2) NOT NULL,
-
-    WwEnvClientId NVARCHAR(100) NULL,
 
     CourseIconUrl NVARCHAR(MAX) NULL,
 

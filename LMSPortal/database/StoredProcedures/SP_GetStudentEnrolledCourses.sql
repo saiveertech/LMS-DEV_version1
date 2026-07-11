@@ -15,7 +15,6 @@ BEGIN
         c.CourseIconUrl,
         c.Tags,
         c.CompletionTimeSeconds,
-        c.PassPercentage,
         e.EnrollmentDate,
         e.CourseStatus,
         e.CertificateStatus,

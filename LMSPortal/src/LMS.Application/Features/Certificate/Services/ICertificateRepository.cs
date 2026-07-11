@@ -10,6 +10,7 @@ public interface ICertificateRepository
         string studentName,
         string studentEmail,
         string courseName,
+        int assignmentId,
         decimal passPercentage,
         string createdById,
         string createdByName,

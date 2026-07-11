@@ -26,17 +26,6 @@ BEGIN
         e.CompletedLessons,
         e.TotalLessons,
         e.AssessmentScore,
-        co.PassPercentage,
-        CAST(
-            CASE
-                WHEN e.TotalLessons > 0
-                     AND e.CompletedLessons >= e.TotalLessons
-                     AND e.AssessmentScore IS NOT NULL
-                     AND e.AssessmentScore >= co.PassPercentage
-                THEN 1
-                ELSE 0
-            END
-        AS BIT)                                                     AS IsPassed,
         CAST(
             CASE WHEN cert.CertificateId IS NOT NULL THEN 1 ELSE 0 END
         AS BIT)                                                     AS CertificateGenerated,

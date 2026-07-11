@@ -79,8 +79,6 @@ public class CourseStudentTrackingRepository : ICourseStudentTrackingRepository
             AssessmentScore = reader["AssessmentScore"] == DBNull.Value
                 ? null
                 : Convert.ToDecimal(reader["AssessmentScore"]),
-            PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
-            IsPassed = Convert.ToBoolean(reader["IsPassed"]),
             CertificateGenerated = Convert.ToBoolean(reader["CertificateGenerated"]),
             CertificateId = reader["CertificateId"] as string,
             CertificateIssueDate = reader["CertificateIssueDate"] == DBNull.Value
