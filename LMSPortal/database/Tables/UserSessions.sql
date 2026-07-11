@@ -1,0 +1,23 @@
+CREATE TABLE LMS.UserSessions
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+
+    SessionId NVARCHAR(50) NOT NULL UNIQUE,
+
+    UserId NVARCHAR(50) NOT NULL,
+
+    Role NVARCHAR(50) NOT NULL,
+
+    DeviceInfo NVARCHAR(500) NULL,
+
+    LoginTime DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+
+    LogoutTime DATETIME2 NULL,
+
+    IsActive BIT NOT NULL DEFAULT 1
+);
+GO
+
+CREATE INDEX IX_UserSessions_UserId_IsActive
+    ON LMS.UserSessions (UserId, IsActive);
+GO

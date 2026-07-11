@@ -1,5 +1,6 @@
 using LMS.Application.Common;
 using LMS.Application.Features.Auth.DTOs;
+using LMS.Application.Features.Session.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -14,16 +15,18 @@ namespace LMS.API.Controllers;
 public class TokenController : ControllerBase
 {
     private readonly IConfiguration _config;
+    private readonly ISessionService _sessionService;
 
-    public TokenController(IConfiguration config)
+    public TokenController(IConfiguration config, ISessionService sessionService)
     {
         _config = config;
+        _sessionService = sessionService;
     }
 
     // Public — generates a token from email + role (no password check, for bootstrap/testing)
     [AllowAnonymous]
 [HttpPost("generate")]
-public IActionResult GenerateToken(
+public async Task<IActionResult> GenerateToken(
     GenerateTokenRequest request)
 {
     if (request.Email != "skilltorole@gmail.com" ||
@@ -33,6 +36,21 @@ public IActionResult GenerateToken(
         {
             Success = false,
             Message = "Invalid Email or Password"
+        });
+    }
+
+    const string bootstrapUserId = "bootstrap-admin";
+
+    // Bootstrap tokens go through the same session gate as real logins so
+    // they remain valid once every secured endpoint checks SessionId.
+    var session = await _sessionService.CreateSessionAsync(bootstrapUserId, "Admin", "bootstrap");
+
+    if (!session.Success)
+    {
+        return Conflict(new
+        {
+            Success = false,
+            Message = session.Message
         });
     }
 
@@ -58,10 +76,13 @@ public IActionResult GenerateToken(
             "Admin"),
 
         new Claim(AppClaimTypes.UserId,
-            "bootstrap-admin"),
+            bootstrapUserId),
 
         new Claim(AppClaimTypes.FullName,
-            "Bootstrap Admin")
+            "Bootstrap Admin"),
+
+        new Claim(AppClaimTypes.SessionId,
+            session.SessionId!)
     };
 
     var expiry = DateTime.UtcNow

@@ -1,5 +1,6 @@
 using LMS.Application.Common;
 using LMS.Application.Features.Auth.DTOs;
+using LMS.Application.Features.Session.Services;
 using LMS.Infrastructure.Repositories.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,16 +17,18 @@ public class AuthController : ControllerBase
 {
     private readonly AuthRepository _repo;
     private readonly IConfiguration _config;
+    private readonly ISessionService _sessionService;
 
-    public AuthController(AuthRepository repo, IConfiguration config)
+    public AuthController(AuthRepository repo, IConfiguration config, ISessionService sessionService)
     {
         _repo = repo;
         _config = config;
+        _sessionService = sessionService;
     }
 
     // Public — generates JWT token after verifying email + password
-    [Authorize]
-[HttpPost("login")]
+    [AllowAnonymous]
+    [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request)
     {
         try
@@ -39,7 +42,19 @@ public class AuthController : ControllerBase
                     Message = "Invalid email or password"
                 });
 
-            var token = GenerateJwtToken(result.Email, result.Role, result.Id, result.Name);
+            // Single-device login: blocked if this user already has an active session
+            var deviceInfo = Request.Headers.UserAgent.ToString();
+
+            var session = await _sessionService.CreateSessionAsync(result.Id, result.Role, deviceInfo);
+
+            if (!session.Success)
+                return Conflict(new
+                {
+                    Success = false,
+                    Message = session.Message
+                });
+
+            var token = GenerateJwtToken(result.Email, result.Role, result.Id, result.Name, session.SessionId!);
 
             return Ok(new
             {
@@ -160,7 +175,8 @@ public async Task<IActionResult> ResetPassword(
         string email,
         string role,
         string userId,
-        string fullName)
+        string fullName,
+        string sessionId)
     {
         var secretKey = _config["JwtSettings:SecretKey"]!;
         var issuer    = _config["JwtSettings:Issuer"]!;
@@ -175,7 +191,8 @@ public async Task<IActionResult> ResetPassword(
             new Claim(ClaimTypes.Name, email),
             new Claim(ClaimTypes.Role, role),
             new Claim(AppClaimTypes.UserId, userId),
-            new Claim(AppClaimTypes.FullName, fullName)
+            new Claim(AppClaimTypes.FullName, fullName),
+            new Claim(AppClaimTypes.SessionId, sessionId)
         };
 
         var expiry = DateTime.UtcNow.AddMinutes(expiryMin);

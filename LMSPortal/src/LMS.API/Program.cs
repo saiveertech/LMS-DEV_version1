@@ -7,6 +7,7 @@ using LMS.Application.Features.Auth.Services.Trainer;
 using LMS.Application.Features.Certificate.Services;
 using LMS.Application.Features.Course.Services;
 using LMS.Application.Features.CourseStudentTracking.Services;
+using LMS.Application.Features.Session.Services;
 using LMS.Infrastructure.Authentication;
 using LMS.Infrastructure.Configurations;
 using LMS.Infrastructure.Email;
@@ -16,6 +17,7 @@ using LMS.Infrastructure.Repositories.Auth;
 using LMS.Infrastructure.Repositories.Certificate;
 using LMS.Infrastructure.Repositories.Course;
 using LMS.Infrastructure.Repositories.CourseStudentTracking;
+using LMS.Infrastructure.Repositories.Session;
 using LMS.Infrastructure.Repositories.Student;
 using LMS.Infrastructure.Repositories.Trainer;
 using LMS.Infrastructure.Services;
@@ -26,6 +28,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
+using System.Security.Claims;
 using System.Text;
 
 QuestPDF.Settings.License = LicenseType.Community;
@@ -65,6 +68,30 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
 
             ClockSkew = TimeSpan.Zero
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var sessionId = context.Principal?.FindFirstValue(AppClaimTypes.SessionId);
+
+                if (string.IsNullOrWhiteSpace(sessionId))
+                {
+                    context.Fail("Token does not contain a session.");
+                    return;
+                }
+
+                var sessionService = context.HttpContext.RequestServices
+                    .GetRequiredService<ISessionService>();
+
+                var isActive = await sessionService.IsSessionActiveAsync(sessionId);
+
+                if (!isActive)
+                {
+                    context.Fail("Session is no longer active. Please log in again.");
+                }
+            }
         };
     });
 
@@ -116,6 +143,9 @@ builder.Services.Configure<CertificateTemplateLayoutOptions>(
 
 builder.Services.AddScoped<ICourseStudentTrackingRepository, CourseStudentTrackingRepository>();
 builder.Services.AddScoped<ICourseStudentTrackingService, CourseStudentTrackingService>();
+
+builder.Services.AddScoped<ISessionRepository, SessionRepository>();
+builder.Services.AddScoped<ISessionService, SessionService>();
 
 builder.Services.Configure<AzureStorageSettings>(
     builder.Configuration.GetSection("AzureStorage"));
