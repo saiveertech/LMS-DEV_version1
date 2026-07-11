@@ -41,18 +41,11 @@ public async Task<IActionResult> GenerateToken(
 
     const string bootstrapUserId = "bootstrap-admin";
 
-    // Bootstrap tokens go through the same session gate as real logins so
-    // they remain valid once every secured endpoint checks SessionId.
-    var session = await _sessionService.CreateSessionAsync(bootstrapUserId, "Admin", "bootstrap");
-
-    if (!session.Success)
-    {
-        return Conflict(new
-        {
-            Success = false,
-            Message = session.Message
-        });
-    }
+    // Bootstrap tokens are never blocked by the single-device gate (this
+    // endpoint reuses the same fixed identity on every call) — clear any
+    // prior bootstrap session and always issue a fresh one, so every
+    // secured endpoint's SessionId check still passes.
+    var sessionId = await _sessionService.CreateOrReplaceSessionAsync(bootstrapUserId, "Admin", "bootstrap");
 
     var secretKey = _config["JwtSettings:SecretKey"]!;
     var issuer = _config["JwtSettings:Issuer"]!;
@@ -82,7 +75,7 @@ public async Task<IActionResult> GenerateToken(
             "Bootstrap Admin"),
 
         new Claim(AppClaimTypes.SessionId,
-            session.SessionId!)
+            sessionId)
     };
 
     var expiry = DateTime.UtcNow

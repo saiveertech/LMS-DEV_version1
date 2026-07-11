@@ -85,7 +85,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 var sessionService = context.HttpContext.RequestServices
                     .GetRequiredService<ISessionService>();
 
-                var isActive = await sessionService.IsSessionActiveAsync(sessionId);
+                var isActive = await sessionService.ValidateAndTouchSessionAsync(sessionId);
 
                 if (!isActive)
                 {
@@ -146,6 +146,8 @@ builder.Services.AddScoped<ICourseStudentTrackingService, CourseStudentTrackingS
 
 builder.Services.AddScoped<ISessionRepository, SessionRepository>();
 builder.Services.AddScoped<ISessionService, SessionService>();
+
+builder.Services.AddHostedService<SessionCleanupService>();
 
 builder.Services.Configure<AzureStorageSettings>(
     builder.Configuration.GetSection("AzureStorage"));

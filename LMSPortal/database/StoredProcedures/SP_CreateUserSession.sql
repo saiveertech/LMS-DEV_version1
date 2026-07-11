@@ -1,24 +1,29 @@
 CREATE PROCEDURE LMS.SP_CreateUserSession
 (
-    @SessionId      NVARCHAR(50),
-    @UserId         NVARCHAR(50),
-    @Role           NVARCHAR(50),
-    @DeviceInfo     NVARCHAR(500),
-    @ExpiryMinutes  INT
+    @SessionId          NVARCHAR(50),
+    @UserId             NVARCHAR(50),
+    @Role               NVARCHAR(50),
+    @DeviceInfo         NVARCHAR(500),
+    @ExpiryMinutes      INT,
+    @IdleTimeoutMinutes INT
 )
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- A session whose JWT would already be expired can never be terminated
-    -- by its owner (the expired token fails auth before reaching /terminate),
-    -- so it must not be allowed to block logins forever. Auto-expire it here.
+    -- A session that's gone idle (no heartbeat/request) or whose JWT would
+    -- already be expired can never be terminated by its owner (a dead
+    -- browser can't call /terminate), so it must not block logins forever.
+    -- Auto-expire on whichever threshold is crossed first.
     UPDATE LMS.UserSessions
     SET IsActive   = 0,
         LogoutTime = SYSUTCDATETIME()
     WHERE UserId    = @UserId
       AND IsActive  = 1
-      AND DATEADD(MINUTE, @ExpiryMinutes, LoginTime) <= SYSUTCDATETIME();
+      AND (
+            DATEADD(MINUTE, @IdleTimeoutMinutes, LastActivityTime) <= SYSUTCDATETIME()
+         OR DATEADD(MINUTE, @ExpiryMinutes, LoginTime) <= SYSUTCDATETIME()
+          );
 
     -- Single-device login: block if this user already has an active session
     IF EXISTS (
@@ -35,14 +40,16 @@ BEGIN
         SessionId,
         UserId,
         Role,
-        DeviceInfo
+        DeviceInfo,
+        LastActivityTime
     )
     VALUES
     (
         @SessionId,
         @UserId,
         @Role,
-        @DeviceInfo
+        @DeviceInfo,
+        SYSUTCDATETIME()
     );
 
 END

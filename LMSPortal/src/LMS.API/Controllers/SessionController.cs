@@ -69,4 +69,44 @@ public class SessionController : ControllerBase
 
         return Ok(result);
     }
+
+    // ─── Heartbeat ────────────────────────────────────────────────────────────
+    // Frontend should call this on an interval (shorter than SessionSettings:
+    // IdleTimeoutMinutes) to keep a genuinely active session from being
+    // treated as abandoned, e.g. while the user sits on a video/reading page
+    // that doesn't otherwise call any API.
+
+    [HttpPost("heartbeat")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Heartbeat()
+    {
+        var sessionId = User.FindFirstValue(AppClaimTypes.SessionId);
+
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            return BadRequest(new ServiceResponse
+            {
+                Success = false,
+                Message = "No session found on this token."
+            });
+        }
+
+        var isActive = await _service.ValidateAndTouchSessionAsync(sessionId);
+
+        if (!isActive)
+        {
+            return Unauthorized(new ServiceResponse
+            {
+                Success = false,
+                Message = "Session is no longer active. Please log in again."
+            });
+        }
+
+        return Ok(new ServiceResponse
+        {
+            Success = true,
+            Message = "Heartbeat recorded."
+        });
+    }
 }

@@ -36,12 +36,14 @@ public class SessionRepository : ISessionRepository
         cmd.CommandType = CommandType.StoredProcedure;
 
         var expiryMinutes = int.Parse(_configuration["JwtSettings:ExpiryMinutes"]!);
+        var idleTimeoutMinutes = int.Parse(_configuration["SessionSettings:IdleTimeoutMinutes"]!);
 
         cmd.Parameters.AddWithValue("@SessionId", sessionId);
         cmd.Parameters.AddWithValue("@UserId", userId);
         cmd.Parameters.AddWithValue("@Role", role);
         cmd.Parameters.AddWithValue("@DeviceInfo", (object?)deviceInfo ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@ExpiryMinutes", expiryMinutes);
+        cmd.Parameters.AddWithValue("@IdleTimeoutMinutes", idleTimeoutMinutes);
 
         await conn.OpenAsync();
 
@@ -95,6 +97,68 @@ public class SessionRepository : ISessionRepository
         cmd.CommandType = CommandType.StoredProcedure;
 
         cmd.Parameters.AddWithValue("@SessionId", sessionId);
+
+        await conn.OpenAsync();
+
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    // ─── Validate And Touch Session ──────────────────────────────────────────
+
+    public async Task<bool> ValidateAndTouchSessionAsync(string sessionId)
+    {
+        using var conn = GetConnection();
+
+        using var cmd = new SqlCommand("LMS.SP_ValidateAndTouchSession", conn);
+
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        var idleTimeoutMinutes = int.Parse(_configuration["SessionSettings:IdleTimeoutMinutes"]!);
+
+        cmd.Parameters.AddWithValue("@SessionId", sessionId);
+        cmd.Parameters.AddWithValue("@IdleTimeoutMinutes", idleTimeoutMinutes);
+
+        await conn.OpenAsync();
+
+        var result = await cmd.ExecuteScalarAsync();
+
+        return result != null && Convert.ToBoolean(result);
+    }
+
+    // ─── Expire Stale Sessions ───────────────────────────────────────────────
+
+    public async Task<int> ExpireStaleSessionsAsync()
+    {
+        using var conn = GetConnection();
+
+        using var cmd = new SqlCommand("LMS.SP_ExpireStaleSessions", conn);
+
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        var expiryMinutes = int.Parse(_configuration["JwtSettings:ExpiryMinutes"]!);
+        var idleTimeoutMinutes = int.Parse(_configuration["SessionSettings:IdleTimeoutMinutes"]!);
+
+        cmd.Parameters.AddWithValue("@IdleTimeoutMinutes", idleTimeoutMinutes);
+        cmd.Parameters.AddWithValue("@ExpiryMinutes", expiryMinutes);
+
+        await conn.OpenAsync();
+
+        var result = await cmd.ExecuteScalarAsync();
+
+        return result == null ? 0 : Convert.ToInt32(result);
+    }
+
+    // ─── Deactivate All Sessions For User ────────────────────────────────────
+
+    public async Task DeactivateAllSessionsForUserAsync(string userId)
+    {
+        using var conn = GetConnection();
+
+        using var cmd = new SqlCommand("LMS.SP_DeactivateAllSessionsForUser", conn);
+
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@UserId", userId);
 
         await conn.OpenAsync();
 

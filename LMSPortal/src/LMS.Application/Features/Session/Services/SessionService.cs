@@ -30,6 +30,20 @@ public class SessionService : ISessionService
         }
     }
 
+    public async Task<string> CreateOrReplaceSessionAsync(
+        string userId,
+        string role,
+        string? deviceInfo)
+    {
+        await _repo.DeactivateAllSessionsForUserAsync(userId);
+
+        var sessionId = Guid.NewGuid().ToString("N");
+
+        await _repo.CreateSessionAsync(sessionId, userId, role, deviceInfo);
+
+        return sessionId;
+    }
+
     public async Task<ServiceResponse> GetCurrentSessionAsync(string sessionId)
     {
         var session = await _repo.GetSessionBySessionIdAsync(sessionId);
@@ -73,10 +87,13 @@ public class SessionService : ISessionService
         }
     }
 
-    public async Task<bool> IsSessionActiveAsync(string sessionId)
+    public async Task<bool> ValidateAndTouchSessionAsync(string sessionId)
     {
-        var session = await _repo.GetSessionBySessionIdAsync(sessionId);
+        return await _repo.ValidateAndTouchSessionAsync(sessionId);
+    }
 
-        return session is { IsActive: true };
+    public async Task<int> ExpireStaleSessionsAsync()
+    {
+        return await _repo.ExpireStaleSessionsAsync();
     }
 }
