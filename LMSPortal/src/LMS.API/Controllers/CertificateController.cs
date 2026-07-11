@@ -69,16 +69,27 @@ public class CertificateController : ControllerBase
             });
         }
 
-        var certificates = await _service.GetStudentCertificates(studentId);
-
-        return Ok(new ServiceResponse
+        try
         {
-            Success = true,
-            Message = certificates.Count > 0
-                ? $"Found {certificates.Count} certificate(s)."
-                : "No certificates found for this student.",
-            Data = certificates
-        });
+            var certificates = await _service.GetStudentCertificates(studentId);
+
+            return Ok(new ServiceResponse
+            {
+                Success = true,
+                Message = certificates.Count > 0
+                    ? $"Found {certificates.Count} certificate(s)."
+                    : "No certificates found for this student.",
+                Data = certificates
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new ServiceResponse
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
     }
 
     // ─── Download Certificate ────────────────────────────────────────────────
@@ -97,28 +108,39 @@ public class CertificateController : ControllerBase
             });
         }
 
-        var certificate = await _service.GetCertificateById(certificateId);
-
-        if (certificate == null)
+        try
         {
-            return NotFound(new ServiceResponse
+            var certificate = await _service.GetCertificateById(certificateId);
+
+            if (certificate == null)
+            {
+                return NotFound(new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Certificate not found."
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(certificate.CertificateUrl))
+            {
+                return NotFound(new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Certificate PDF not available."
+                });
+            }
+
+            // Redirect to the Azure Blob SAS URL for download
+            return Redirect(certificate.CertificateUrl);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new ServiceResponse
             {
                 Success = false,
-                Message = "Certificate not found."
+                Message = ex.Message
             });
         }
-
-        if (string.IsNullOrWhiteSpace(certificate.CertificateUrl))
-        {
-            return NotFound(new ServiceResponse
-            {
-                Success = false,
-                Message = "Certificate PDF not available."
-            });
-        }
-
-        // Redirect to the Azure Blob SAS URL for download
-        return Redirect(certificate.CertificateUrl);
     }
 
     // ─── Verify Certificate ──────────────────────────────────────────────────

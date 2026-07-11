@@ -182,7 +182,9 @@ public class CertificateRepository : ICertificateRepository
             StudentEmail = reader["StudentEmail"] as string ?? string.Empty,
             CourseId = Convert.ToInt32(reader["CourseId"]),
             CourseName = reader["CourseName"] as string ?? string.Empty,
-            AssignmentId = Convert.ToInt32(reader["AssignmentId"]),
+            AssignmentId = reader["AssignmentId"] == DBNull.Value
+                ? 0
+                : Convert.ToInt32(reader["AssignmentId"]),
             CompletionPercentage = Convert.ToDecimal(reader["CompletionPercentage"]),
             AssessmentScore = Convert.ToDecimal(reader["AssessmentScore"]),
             PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
