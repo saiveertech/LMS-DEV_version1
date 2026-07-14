@@ -34,6 +34,13 @@ public interface IStudentService
         string studentId, int assignmentId,
         string assignedById, string assignedByName, string assignedByRole);
 
+    // Trainer/admin-assigned courses/assignments for this student — the
+    // audit trail from AssignCourseToStudent/AssignAssignmentToStudent,
+    // read back. Self-registrations are excluded.
+    Task<object?> GetAssignedCourses(string studentId);
+
+    Task<object?> GetAssignedAssignments(string studentId);
+
     Task<ServiceResponse> CompleteCourseSlide(string studentId, int slideId);
 
     Task<List<CourseSlideProgressResponse>> GetCourseResume(string studentId, int courseId);

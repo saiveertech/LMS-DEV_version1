@@ -526,6 +526,20 @@ public class StudentService : IStudentService
     }
 
     //=========================================
+    // Get Assigned Courses / Assignments for a Student (trainer/admin audit trail)
+    //=========================================
+
+    public async Task<object?> GetAssignedCourses(string studentId)
+    {
+        return await _repo.GetAssignedCourses(studentId);
+    }
+
+    public async Task<object?> GetAssignedAssignments(string studentId)
+    {
+        return await _repo.GetAssignedAssignments(studentId);
+    }
+
+    //=========================================
     // Complete Course Slide
     //=========================================
 

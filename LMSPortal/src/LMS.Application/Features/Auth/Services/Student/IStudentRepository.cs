@@ -28,6 +28,12 @@ public interface IStudentRepository
         string studentId, int assignmentId,
         string assignedById, string assignedByName, string assignedByRole);
 
+    // Reads back the audit trail above — only trainer/admin-assigned courses
+    // and assignments for this student, self-registrations excluded.
+    Task<object?> GetAssignedCourses(string studentId);
+
+    Task<object?> GetAssignedAssignments(string studentId);
+
     // Throws if the slide or the student's course enrollment isn't found.
     Task<CourseStudentTrackingResponse?> CompleteCourseSlide(string studentId, int slideId);
 

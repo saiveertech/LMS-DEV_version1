@@ -166,6 +166,60 @@ public class StudentController : ControllerBase
         });
     }
 
+    // ─── Trainer/Admin-Assigned Courses & Assignments ────────────────────────
+    // Distinct from enrolled-courses/enrolled-assignments (which include
+    // self-registrations too): these show only what a trainer/admin has
+    // assigned to this student, via TrainerController's assign-course /
+    // assign-assignment, along with who assigned it and when.
+
+    [HttpGet("assigned-courses/{studentId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetAssignedCourses(string studentId)
+    {
+        if (string.IsNullOrWhiteSpace(studentId))
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = "Student ID is required."
+            });
+        }
+
+        var result = await _service.GetAssignedCourses(studentId);
+
+        return Ok(new
+        {
+            Success = true,
+            StudentId = studentId,
+            Data = result
+        });
+    }
+
+    [HttpGet("assigned-assignments/{studentId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetAssignedAssignments(string studentId)
+    {
+        if (string.IsNullOrWhiteSpace(studentId))
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = "Student ID is required."
+            });
+        }
+
+        var result = await _service.GetAssignedAssignments(studentId);
+
+        return Ok(new
+        {
+            Success = true,
+            StudentId = studentId,
+            Data = result
+        });
+    }
+
     // ─── Submit Assignment Attempt ───────────────────────────────────────────
     // AssessmentScore keeps the best score across attempts; AssignmentStatus
     // auto-flips to Completed once a passing score is reached and never

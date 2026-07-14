@@ -441,6 +441,83 @@ public async Task RecordAssignmentAllocation(
     await cmd.ExecuteNonQueryAsync();
 }
 
+public async Task<object?> GetAssignedCourses(string studentId)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_GetCourseAssignmentsByStudent", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
+
+    await conn.OpenAsync();
+
+    using var reader = await cmd.ExecuteReaderAsync();
+
+    var assignments = new List<object>();
+
+    while (await reader.ReadAsync())
+    {
+        assignments.Add(new
+        {
+            AssignmentRecordId = reader["AssignmentRecordId"],
+            StudentId = reader["StudentId"],
+            CourseId = reader["CourseId"],
+            CourseTitle = reader["CourseTitle"],
+            CourseDescription = reader["CourseDescription"] as string,
+            CourseIconUrl = reader["CourseIconUrl"] as string,
+            Tags = reader["Tags"] as string,
+            CompletionTimeSeconds = Convert.ToInt32(reader["CompletionTimeSeconds"]),
+            AssignedById = reader["AssignedById"],
+            AssignedByName = reader["AssignedByName"],
+            AssignedByRole = reader["AssignedByRole"],
+            AssignedDate = Convert.ToDateTime(reader["AssignedDate"])
+        });
+    }
+
+    return assignments;
+}
+
+public async Task<object?> GetAssignedAssignments(string studentId)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_GetAssignmentAllocationsByStudent", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
+
+    await conn.OpenAsync();
+
+    using var reader = await cmd.ExecuteReaderAsync();
+
+    var allocations = new List<object>();
+
+    while (await reader.ReadAsync())
+    {
+        allocations.Add(new
+        {
+            AllocationRecordId = reader["AllocationRecordId"],
+            StudentId = reader["StudentId"],
+            AssignmentId = reader["AssignmentId"],
+            AssignmentTitle = reader["AssignmentTitle"],
+            AssignmentDescription = reader["AssignmentDescription"] as string,
+            AssessmentIconUrl = reader["AssessmentIconUrl"] as string,
+            Tags = reader["Tags"] as string,
+            CompletionTimeSeconds = Convert.ToInt32(reader["CompletionTimeSeconds"]),
+            PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
+            AssignedById = reader["AssignedById"],
+            AssignedByName = reader["AssignedByName"],
+            AssignedByRole = reader["AssignedByRole"],
+            AssignedDate = Convert.ToDateTime(reader["AssignedDate"])
+        });
+    }
+
+    return allocations;
+}
+
 public async Task<CourseStudentTrackingResponse?> CompleteCourseSlide(string studentId, int slideId)
 {
     using var conn = GetConnection();
