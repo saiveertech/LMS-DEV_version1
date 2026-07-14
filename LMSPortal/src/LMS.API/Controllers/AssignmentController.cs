@@ -154,7 +154,7 @@ public class AssignmentController : ControllerBase
             Success = true,
             Message = questions.Count > 0
                 ? $"Found {questions.Count} question(s)."
-                : "No questions found — has the answer-key CSV been uploaded?",
+                : "No questions found — has the answer-key Excel file been uploaded?",
             Data = questions
         });
     }

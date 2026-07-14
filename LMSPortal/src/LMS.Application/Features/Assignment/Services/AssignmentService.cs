@@ -1,3 +1,4 @@
+using ClosedXML.Excel;
 using LMS.Application.Common;
 using LMS.Application.Features.Assignment.DTOs;
 using Microsoft.AspNetCore.Http;
@@ -10,13 +11,13 @@ public class AssignmentService : IAssignmentService
 
     private static readonly string[] AllowedIconExtensions = { ".png", ".jpg", ".jpeg", ".webp" };
 
-    private static readonly string[] AllowedCsvExtensions = { ".csv" };
+    private static readonly string[] AllowedQuestionsFileExtensions = { ".xlsx" };
 
     private const long MaxVideoSizeBytes = 500 * 1024 * 1024;
 
     private const long MaxIconSizeBytes = 5 * 1024 * 1024;
 
-    private const long MaxCsvSizeBytes = 20 * 1024 * 1024;
+    private const long MaxQuestionsFileSizeBytes = 20 * 1024 * 1024;
 
     private readonly IAssignmentRepository _repo;
     private readonly IBlobStorageService _blobStorageService;
@@ -118,9 +119,9 @@ public class AssignmentService : IAssignmentService
             {
                 var validationError = ValidateFile(
                     request.QuestionsCsv,
-                    AllowedCsvExtensions,
-                    MaxCsvSizeBytes,
-                    "Questions Csv");
+                    AllowedQuestionsFileExtensions,
+                    MaxQuestionsFileSizeBytes,
+                    "Questions Excel");
 
                 if (validationError != null)
                 {
@@ -158,13 +159,13 @@ public class AssignmentService : IAssignmentService
                     "assignment-icons");
             }
 
-            // Parse the answer key up front so a malformed CSV fails the
-            // whole request before the assignment is even created.
+            // Parse the answer key up front so a malformed Excel file fails
+            // the whole request before the assignment is even created.
             List<QuestionImportRow>? parsedQuestions = null;
 
             if (request.QuestionsCsv != null)
             {
-                var (rows, parseError) = await ParseQuestionsCsv(request.QuestionsCsv);
+                var (rows, parseError) = await ParseQuestionsExcel(request.QuestionsCsv);
 
                 if (parseError != null)
                 {
@@ -184,7 +185,7 @@ public class AssignmentService : IAssignmentService
                 createdByRole);
 
             // Auto-import the answer key — the trainer only ever uploads the
-            // CSV once, at create time (or re-uploads it on update below).
+            // Excel file once, at create time (or re-uploads it on update below).
             if (parsedQuestions != null && result is AssignmentResponse created)
             {
                 await _repo.ReplaceQuestions(created.AssignmentId, parsedQuestions);
@@ -310,9 +311,9 @@ public class AssignmentService : IAssignmentService
             {
                 var validationError = ValidateFile(
                     request.QuestionsCsv,
-                    AllowedCsvExtensions,
-                    MaxCsvSizeBytes,
-                    "Questions Csv");
+                    AllowedQuestionsFileExtensions,
+                    MaxQuestionsFileSizeBytes,
+                    "Questions Excel");
 
                 if (validationError != null)
                 {
@@ -350,13 +351,13 @@ public class AssignmentService : IAssignmentService
                     "assignment-icons");
             }
 
-            // A re-uploaded CSV means the trainer wants to replace the
-            // answer key entirely.
+            // A re-uploaded Excel file means the trainer wants to replace
+            // the answer key entirely.
             List<QuestionImportRow>? parsedQuestions = null;
 
             if (request.QuestionsCsv != null)
             {
-                var (rows, parseError) = await ParseQuestionsCsv(request.QuestionsCsv);
+                var (rows, parseError) = await ParseQuestionsExcel(request.QuestionsCsv);
 
                 if (parseError != null)
                 {
@@ -525,118 +526,63 @@ public class AssignmentService : IAssignmentService
     }
 
     //=========================================
-    // CSV Answer-Key Parsing
+    // Excel Answer-Key Parsing
     //=========================================
-    // Expected header: QuestionText,OptionA,OptionB,OptionC,OptionD,CorrectOption,Marks
-    // Marks column is optional per row — defaults to 1 if omitted/blank.
+    // Expected columns (row 1 = header, read by position not by header text):
+    // A=id (ignored), B=prompt, C=optionA, D=optionB, E=optionC, F=optionD, G=correctKey.
+    // Marks isn't part of this layout — every imported question defaults to 1 mark.
 
-    private static async Task<(List<QuestionImportRow> Rows, string? Error)> ParseQuestionsCsv(IFormFile file)
+    private static Task<(List<QuestionImportRow> Rows, string? Error)> ParseQuestionsExcel(IFormFile file)
     {
-        using var reader = new StreamReader(file.OpenReadStream());
+        using var stream = file.OpenReadStream();
+        using var workbook = new XLWorkbook(stream);
 
-        var text = await reader.ReadToEndAsync();
-
-        var lines = text.Split('\n')
-            .Select(l => l.TrimEnd('\r'))
-            .Where(l => !string.IsNullOrWhiteSpace(l))
-            .ToList();
-
-        if (lines.Count <= 1)
-        {
-            return (new List<QuestionImportRow>(), "Questions CSV must contain a header row plus at least one question.");
-        }
-
+        var worksheet = workbook.Worksheets.First();
+        var lastRowUsed = worksheet.LastRowUsed();
         var rows = new List<QuestionImportRow>();
 
-        for (int i = 1; i < lines.Count; i++)
+        if (lastRowUsed == null || lastRowUsed.RowNumber() <= 1)
         {
-            var fields = SplitCsvLine(lines[i]);
-            var lineNumber = i + 1;
+            return Task.FromResult<(List<QuestionImportRow>, string?)>(
+                (rows, "Questions Excel file must contain a header row plus at least one question."));
+        }
 
-            if (fields.Count < 6)
+        for (int rowNumber = 2; rowNumber <= lastRowUsed.RowNumber(); rowNumber++)
+        {
+            var row = worksheet.Row(rowNumber);
+
+            var prompt = row.Cell(2).GetString().Trim();
+            var optionA = row.Cell(3).GetString().Trim();
+            var optionB = row.Cell(4).GetString().Trim();
+            var optionC = row.Cell(5).GetString().Trim();
+            var optionD = row.Cell(6).GetString().Trim();
+            var correctKeyRaw = row.Cell(7).GetString().Trim();
+            var correctKey = correctKeyRaw.ToUpperInvariant();
+
+            // Skip fully blank trailing rows rather than treating them as errors.
+            if (string.IsNullOrWhiteSpace(prompt) && string.IsNullOrWhiteSpace(correctKeyRaw))
             {
-                return (rows, $"CSV line {lineNumber}: expected at least 6 columns (QuestionText, OptionA-D, CorrectOption), got {fields.Count}.");
+                continue;
             }
 
-            var correctOption = fields[5].Trim().ToUpperInvariant();
-
-            if (correctOption != "A" && correctOption != "B" && correctOption != "C" && correctOption != "D")
+            if (correctKey != "A" && correctKey != "B" && correctKey != "C" && correctKey != "D")
             {
-                return (rows, $"CSV line {lineNumber}: CorrectOption must be A, B, C, or D — got '{fields[5]}'.");
-            }
-
-            decimal marks = 1;
-
-            if (fields.Count >= 7 && !string.IsNullOrWhiteSpace(fields[6]))
-            {
-                if (!decimal.TryParse(fields[6], out marks) || marks <= 0)
-                {
-                    return (rows, $"CSV line {lineNumber}: Marks must be a positive number — got '{fields[6]}'.");
-                }
+                return Task.FromResult<(List<QuestionImportRow>, string?)>(
+                    (rows, $"Excel row {rowNumber}: correctKey must be A, B, C, or D — got '{correctKeyRaw}'."));
             }
 
             rows.Add(new QuestionImportRow
             {
-                QuestionText = fields[0].Trim(),
-                OptionA = fields[1].Trim(),
-                OptionB = fields[2].Trim(),
-                OptionC = fields[3].Trim(),
-                OptionD = fields[4].Trim(),
-                CorrectOption = correctOption,
-                Marks = marks
+                QuestionText = prompt,
+                OptionA = optionA,
+                OptionB = optionB,
+                OptionC = optionC,
+                OptionD = optionD,
+                CorrectOption = correctKey,
+                Marks = 1
             });
         }
 
-        return (rows, null);
-    }
-
-    // Minimal quote-aware CSV splitter — handles quoted fields containing commas.
-    private static List<string> SplitCsvLine(string line)
-    {
-        var fields = new List<string>();
-        var current = new System.Text.StringBuilder();
-        bool inQuotes = false;
-
-        for (int i = 0; i < line.Length; i++)
-        {
-            char c = line[i];
-
-            if (inQuotes)
-            {
-                if (c == '"')
-                {
-                    if (i + 1 < line.Length && line[i + 1] == '"')
-                    {
-                        current.Append('"');
-                        i++;
-                    }
-                    else
-                    {
-                        inQuotes = false;
-                    }
-                }
-                else
-                {
-                    current.Append(c);
-                }
-            }
-            else if (c == '"')
-            {
-                inQuotes = true;
-            }
-            else if (c == ',')
-            {
-                fields.Add(current.ToString());
-                current.Clear();
-            }
-            else
-            {
-                current.Append(c);
-            }
-        }
-
-        fields.Add(current.ToString());
-
-        return fields;
+        return Task.FromResult<(List<QuestionImportRow>, string?)>((rows, null));
     }
 }
