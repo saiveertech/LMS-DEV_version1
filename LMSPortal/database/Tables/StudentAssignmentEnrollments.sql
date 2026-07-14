@@ -15,6 +15,10 @@ CREATE TABLE LMS.StudentAssignmentEnrollments
 
     AssessmentScore DECIMAL(5,2) NULL,
 
+    -- Number of times the student has submitted this assignment.
+    -- AssessmentScore always holds the best score across all attempts.
+    Attempts INT NOT NULL DEFAULT 0,
+
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
 
     UpdatedDate DATETIME2 NULL,

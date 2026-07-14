@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using LMS.Application.Common;
 using LMS.Application.Features.Certificate.DTOs;
 using LMS.Application.Features.Certificate.Services;
@@ -17,40 +16,6 @@ public class CertificateController : ControllerBase
     public CertificateController(ICertificateService service)
     {
         _service = service;
-    }
-
-    // ─── Generate Certificate ────────────────────────────────────────────────
-
-    [HttpPost("generate")]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GenerateCertificate(
-        [FromBody] GenerateCertificateRequest request)
-    {
-        var createdById = !string.IsNullOrWhiteSpace(request.CreatedById)
-            ? request.CreatedById
-            : User.FindFirstValue(AppClaimTypes.UserId) ?? string.Empty;
-
-        var createdByName = !string.IsNullOrWhiteSpace(request.CreatedByName)
-            ? request.CreatedByName
-            : User.FindFirstValue(AppClaimTypes.FullName) ?? string.Empty;
-
-        var createdByRole = !string.IsNullOrWhiteSpace(request.CreatedByRole)
-            ? request.CreatedByRole
-            : User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
-
-        var result = await _service.GenerateCertificate(
-            request,
-            createdById,
-            createdByName,
-            createdByRole);
-
-        if (!result.Success)
-            return BadRequest(result);
-
-        return StatusCode(
-            StatusCodes.Status201Created,
-            result);
     }
 
     // ─── Get Student Certificates ────────────────────────────────────────────

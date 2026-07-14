@@ -6,23 +6,27 @@ CREATE TABLE LMS.Certificates
 
     CredentialId NVARCHAR(50) NOT NULL UNIQUE,
 
+    -- Course | Assignment — which completion path issued this certificate.
+    -- Exactly one of CourseId / AssignmentId applies, per CertificateType.
+    CertificateType NVARCHAR(20) NOT NULL DEFAULT 'Course',
+
     StudentId NVARCHAR(50) NOT NULL,
 
     StudentName NVARCHAR(200) NOT NULL,
 
     StudentEmail NVARCHAR(200) NOT NULL,
 
-    CourseId INT NOT NULL,
+    CourseId INT NULL,
 
-    CourseName NVARCHAR(200) NOT NULL,
+    CourseName NVARCHAR(200) NULL,
 
-    AssignmentId INT NOT NULL,
+    AssignmentId INT NULL,
 
-    CompletionPercentage DECIMAL(5,2) NOT NULL,
+    CompletionPercentage DECIMAL(5,2) NULL,
 
-    AssessmentScore DECIMAL(5,2) NOT NULL,
+    AssessmentScore DECIMAL(5,2) NULL,
 
-    PassPercentage DECIMAL(5,2) NOT NULL,
+    PassPercentage DECIMAL(5,2) NULL,
 
     CompletionDate DATETIME2 NOT NULL,
 
@@ -55,6 +59,15 @@ CREATE TABLE LMS.Certificates
         REFERENCES LMS.Assignments(AssignmentId),
 
     CONSTRAINT UQ_StudentCourse_Certificate
-        UNIQUE (StudentId, CourseId)
+        UNIQUE (StudentId, CourseId),
+
+    CONSTRAINT UQ_StudentAssignment_Certificate
+        UNIQUE (StudentId, AssignmentId),
+
+    CONSTRAINT CK_Certificates_TypeConsistency
+        CHECK (
+            (CertificateType = 'Course'     AND CourseId IS NOT NULL)
+         OR (CertificateType = 'Assignment' AND AssignmentId IS NOT NULL)
+        )
 );
 GO

@@ -16,6 +16,8 @@ BEGIN
         e.CourseId,
         co.Title                                                   AS CourseTitle,
         e.EnrollmentDate,
+        CASE WHEN ca.Id IS NOT NULL THEN 'TrainerAssigned' ELSE 'Self' END AS EnrollmentSource,
+        ca.AssignedByName,
         e.RegistrationStatus,
         e.CourseStatus,
         CASE
@@ -42,6 +44,10 @@ BEGIN
     LEFT JOIN LMS.Certificates cert
         ON cert.StudentId = e.StudentId
        AND cert.CourseId = e.CourseId
+       AND cert.CertificateType = 'Course'
+    LEFT JOIN LMS.CourseAssignments ca
+        ON ca.StudentId = e.StudentId
+       AND ca.CourseId = e.CourseId
     WHERE e.CourseId = @CourseId
       AND (@Status IS NULL OR e.RegistrationStatus = @Status)
       AND (@StudentId IS NULL OR e.StudentId = @StudentId)

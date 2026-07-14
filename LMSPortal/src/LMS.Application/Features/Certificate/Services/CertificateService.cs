@@ -1,5 +1,6 @@
 using LMS.Application.Common;
 using LMS.Application.Features.Assignment.Services;
+using LMS.Application.Features.Auth.Services.Student;
 using LMS.Application.Features.Certificate.DTOs;
 using LMS.Application.Features.Course.Services;
 
@@ -10,6 +11,7 @@ public class CertificateService : ICertificateService
     private readonly ICertificateRepository _repo;
     private readonly ICourseRepository _courseRepo;
     private readonly IAssignmentRepository _assignmentRepo;
+    private readonly IStudentRepository _studentRepo;
     private readonly ICertificateTemplateRenderer _templateRenderer;
     private readonly IBlobStorageService _blobService;
 
@@ -19,141 +21,79 @@ public class CertificateService : ICertificateService
         ICertificateRepository repo,
         ICourseRepository courseRepo,
         IAssignmentRepository assignmentRepo,
+        IStudentRepository studentRepo,
         ICertificateTemplateRenderer templateRenderer,
         IBlobStorageService blobService)
     {
         _repo = repo;
         _courseRepo = courseRepo;
         _assignmentRepo = assignmentRepo;
+        _studentRepo = studentRepo;
         _templateRenderer = templateRenderer;
         _blobService = blobService;
     }
 
+    private async Task<(string Name, string Email)?> GetStudentNameAndEmail(string studentId)
+    {
+        var studentObj = await _studentRepo.GetStudentById(studentId);
+
+        if (studentObj == null)
+            return null;
+
+        var studentType = studentObj.GetType();
+
+        var firstName = studentType.GetProperty("FirstName")?.GetValue(studentObj) as string ?? string.Empty;
+        var lastName = studentType.GetProperty("LastName")?.GetValue(studentObj) as string ?? string.Empty;
+        var email = studentType.GetProperty("Email")?.GetValue(studentObj) as string ?? string.Empty;
+
+        return ($"{firstName} {lastName}".Trim(), email);
+    }
+
     //=========================================
-    // Generate Certificate
+    // Generate Course Certificate (auto-issued)
     //=========================================
 
-    public async Task<ServiceResponse> GenerateCertificate(
-        GenerateCertificateRequest request,
+    public async Task<ServiceResponse> GenerateCourseCertificateAsync(
+        string studentId,
+        int courseId,
+        decimal completionPercentage,
+        DateTime completionDate,
         string createdById,
         string createdByName,
         string createdByRole)
     {
         try
         {
-            // ── Input Validation ──
-
-            if (string.IsNullOrWhiteSpace(request.StudentId))
-            {
-                return new ServiceResponse
-                {
-                    Success = false,
-                    Message = "Student ID is required."
-                };
-            }
-
-            if (request.CourseId <= 0)
-            {
-                return new ServiceResponse
-                {
-                    Success = false,
-                    Message = "A valid Course ID is required."
-                };
-            }
-
-            if (request.AssignmentId <= 0)
-            {
-                return new ServiceResponse
-                {
-                    Success = false,
-                    Message = "A valid Assignment ID is required."
-                };
-            }
-
-            // ── Business Rule: Completion must be 100% ──
-
-            if (request.CompletionPercentage < 100)
-            {
-                return new ServiceResponse
-                {
-                    Success = false,
-                    Message = "Course completion must be 100% to generate a certificate."
-                };
-            }
-
-            // ── Fetch course details for validation ──
-
-            var courseObj = await _courseRepo.GetCourseById(request.CourseId);
+            var courseObj = await _courseRepo.GetCourseById(courseId);
 
             if (courseObj == null)
             {
-                return new ServiceResponse
-                {
-                    Success = false,
-                    Message = "Course not found."
-                };
+                return new ServiceResponse { Success = false, Message = "Course not found." };
             }
 
-            // Extract course properties dynamically
-            var courseType = courseObj.GetType();
-
-            var courseName = courseType.GetProperty("Title")?.GetValue(courseObj) as string
+            var courseName = courseObj.GetType().GetProperty("Title")?.GetValue(courseObj) as string
                 ?? string.Empty;
 
-            // ── Fetch assignment details for the pass-percentage gate ──
+            var student = await GetStudentNameAndEmail(studentId);
 
-            var assignmentObj = await _assignmentRepo.GetAssignments(request.AssignmentId);
-
-            if (assignmentObj == null)
+            if (student == null)
             {
-                return new ServiceResponse
-                {
-                    Success = false,
-                    Message = "Assignment not found."
-                };
+                return new ServiceResponse { Success = false, Message = "Student not found." };
             }
-
-            var assignmentType = assignmentObj.GetType();
-
-            var passPercentage = Convert.ToDecimal(
-                assignmentType.GetProperty("PassPercentage")?.GetValue(assignmentObj) ?? 0m);
-
-            // ── Business Rule: Assessment score >= Pass Percentage ──
-
-            if (request.AssessmentScore < passPercentage)
-            {
-                return new ServiceResponse
-                {
-                    Success = false,
-                    Message = $"Assessment score ({request.AssessmentScore}%) is below the pass percentage ({passPercentage}%)."
-                };
-            }
-
-            // ── Fetch student details ──
-
-            // We need student name and email; use inline SQL for lightweight fetch
-            var studentName = createdByName;
-            var studentEmail = string.Empty;
-
-            // ── Generate temporary IDs for PDF (will be replaced by SP) ──
 
             var tempCertId = $"CERT-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
-            var tempCredId = $"CRED-SK-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
-
-            // ── Generate PDF from the uploaded certificate template ──
+            var tempCredId = $"CRED-CO-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
 
             var pngBytes = await _templateRenderer.RenderPngAsync(
-                studentName,
+                student.Value.Name,
                 courseName,
-                request.CompletionDate,
+                completionDate,
                 tempCredId,
                 tempCertId);
 
             var pdfBytes = _templateRenderer.WrapPngInPdf(pngBytes);
 
-            // ── Upload to Azure Blob Storage ──
-
-            var blobName = $"{request.StudentId}/{tempCertId}.pdf";
+            var blobName = $"{studentId}/{tempCertId}.pdf";
 
             string certificateUrl;
 
@@ -166,43 +106,128 @@ public class CertificateService : ICertificateService
                     "application/pdf");
             }
 
-            // ── Save to database (SP handles duplicate prevention) ──
-
-            var certificate = await _repo.GenerateCertificate(
-                request,
-                certificateUrl,
-                studentName,
-                studentEmail,
+            var certificate = await _repo.GenerateCourseCertificate(
+                studentId,
+                student.Value.Name,
+                student.Value.Email,
+                courseId,
                 courseName,
-                request.AssignmentId,
-                passPercentage,
+                completionPercentage,
+                completionDate,
+                certificateUrl,
                 createdById,
                 createdByName,
                 createdByRole);
 
             if (certificate == null)
             {
-                return new ServiceResponse
-                {
-                    Success = false,
-                    Message = "Failed to generate certificate."
-                };
+                return new ServiceResponse { Success = false, Message = "Failed to generate course certificate." };
             }
 
             return new ServiceResponse
             {
                 Success = true,
-                Message = "Certificate generated successfully.",
+                Message = "Course certificate generated successfully.",
                 Data = certificate
             };
         }
         catch (Exception ex)
         {
+            return new ServiceResponse { Success = false, Message = ex.Message };
+        }
+    }
+
+    //=========================================
+    // Generate Assignment Certificate (auto-issued)
+    //=========================================
+
+    public async Task<ServiceResponse> GenerateAssignmentCertificateAsync(
+        string studentId,
+        int assignmentId,
+        decimal assessmentScore,
+        DateTime completionDate,
+        string createdById,
+        string createdByName,
+        string createdByRole)
+    {
+        try
+        {
+            var assignmentObj = await _assignmentRepo.GetAssignments(assignmentId);
+
+            if (assignmentObj == null)
+            {
+                return new ServiceResponse { Success = false, Message = "Assignment not found." };
+            }
+
+            var assignmentType = assignmentObj.GetType();
+
+            var assignmentTitle = assignmentType.GetProperty("Title")?.GetValue(assignmentObj) as string
+                ?? string.Empty;
+
+            var passPercentage = Convert.ToDecimal(
+                assignmentType.GetProperty("PassPercentage")?.GetValue(assignmentObj) ?? 0m);
+
+            var student = await GetStudentNameAndEmail(studentId);
+
+            if (student == null)
+            {
+                return new ServiceResponse { Success = false, Message = "Student not found." };
+            }
+
+            var tempCertId = $"CERT-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
+            var tempCredId = $"CRED-AS-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
+
+            var pngBytes = await _templateRenderer.RenderPngAsync(
+                student.Value.Name,
+                assignmentTitle,
+                completionDate,
+                tempCredId,
+                tempCertId);
+
+            var pdfBytes = _templateRenderer.WrapPngInPdf(pngBytes);
+
+            var blobName = $"{studentId}/{tempCertId}.pdf";
+
+            string certificateUrl;
+
+            using (var stream = new MemoryStream(pdfBytes))
+            {
+                certificateUrl = await _blobService.UploadStreamAsync(
+                    stream,
+                    CertificatesContainer,
+                    blobName,
+                    "application/pdf");
+            }
+
+            var certificate = await _repo.GenerateAssignmentCertificate(
+                studentId,
+                student.Value.Name,
+                student.Value.Email,
+                assignmentId,
+                assignmentTitle,
+                assessmentScore,
+                passPercentage,
+                completionDate,
+                certificateUrl,
+                createdById,
+                createdByName,
+                createdByRole);
+
+            if (certificate == null)
+            {
+                return new ServiceResponse { Success = false, Message = "Failed to generate assignment certificate." };
+            }
+
             return new ServiceResponse
             {
-                Success = false,
-                Message = ex.Message
+                Success = true,
+                Message = "Assignment certificate generated successfully.",
+                Data = certificate
             };
+        }
+        catch (Exception ex)
+        {
+            return new ServiceResponse { Success = false, Message = ex.Message };
         }
     }
 

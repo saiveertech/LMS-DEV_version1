@@ -4,14 +4,31 @@ namespace LMS.Application.Features.Certificate.Services;
 
 public interface ICertificateRepository
 {
-    Task<CertificateResponse?> GenerateCertificate(
-        GenerateCertificateRequest request,
-        string certificateUrl,
+    // Throws if a course certificate already exists for this student/course.
+    Task<CertificateResponse?> GenerateCourseCertificate(
+        string studentId,
         string studentName,
         string studentEmail,
+        int courseId,
         string courseName,
+        decimal completionPercentage,
+        DateTime completionDate,
+        string certificateUrl,
+        string createdById,
+        string createdByName,
+        string createdByRole);
+
+    // Throws if an assignment certificate already exists for this student/assignment.
+    Task<CertificateResponse?> GenerateAssignmentCertificate(
+        string studentId,
+        string studentName,
+        string studentEmail,
         int assignmentId,
+        string assignmentTitle,
+        decimal assessmentScore,
         decimal passPercentage,
+        DateTime completionDate,
+        string certificateUrl,
         string createdById,
         string createdByName,
         string createdByRole);

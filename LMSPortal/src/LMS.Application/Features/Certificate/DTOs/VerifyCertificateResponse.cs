@@ -6,15 +6,17 @@ public class VerifyCertificateResponse
 
     public string CredentialId { get; set; } = string.Empty;
 
+    public string CertificateType { get; set; } = string.Empty;
+
     public string StudentName { get; set; } = string.Empty;
 
-    public string CourseName { get; set; } = string.Empty;
+    public string? CourseName { get; set; }
 
-    public decimal CompletionPercentage { get; set; }
+    public decimal? CompletionPercentage { get; set; }
 
-    public decimal AssessmentScore { get; set; }
+    public decimal? AssessmentScore { get; set; }
 
-    public decimal PassPercentage { get; set; }
+    public decimal? PassPercentage { get; set; }
 
     public DateTime CompletionDate { get; set; }
 

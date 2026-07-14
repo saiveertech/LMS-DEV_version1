@@ -10,6 +10,7 @@ BEGIN
         Id,
         CertificateId,
         CredentialId,
+        CertificateType,
         StudentId,
         StudentName,
         StudentEmail,

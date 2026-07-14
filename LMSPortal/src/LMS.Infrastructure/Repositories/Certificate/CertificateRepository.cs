@@ -21,23 +21,24 @@ public class CertificateRepository : ICertificateRepository
             _configuration.GetConnectionString("DefaultConnection"));
     }
 
-    // ─── Generate Certificate ────────────────────────────────────────────────
+    // ─── Generate Course Certificate ─────────────────────────────────────────
 
-    public async Task<CertificateResponse?> GenerateCertificate(
-        GenerateCertificateRequest request,
-        string certificateUrl,
+    public async Task<CertificateResponse?> GenerateCourseCertificate(
+        string studentId,
         string studentName,
         string studentEmail,
+        int courseId,
         string courseName,
-        int assignmentId,
-        decimal passPercentage,
+        decimal completionPercentage,
+        DateTime completionDate,
+        string certificateUrl,
         string createdById,
         string createdByName,
         string createdByRole)
     {
         using var conn = GetConnection();
 
-        using var cmd = new SqlCommand("LMS.SP_GenerateCertificate", conn);
+        using var cmd = new SqlCommand("LMS.SP_GenerateCourseCertificate", conn);
 
         cmd.CommandType = CommandType.StoredProcedure;
 
@@ -55,16 +56,13 @@ public class CertificateRepository : ICertificateRepository
 
         cmd.Parameters.Add(certificateIdParam);
         cmd.Parameters.Add(credentialIdParam);
-        cmd.Parameters.AddWithValue("@StudentId", request.StudentId);
+        cmd.Parameters.AddWithValue("@StudentId", studentId);
         cmd.Parameters.AddWithValue("@StudentName", studentName);
         cmd.Parameters.AddWithValue("@StudentEmail", studentEmail);
-        cmd.Parameters.AddWithValue("@CourseId", request.CourseId);
+        cmd.Parameters.AddWithValue("@CourseId", courseId);
         cmd.Parameters.AddWithValue("@CourseName", courseName);
-        cmd.Parameters.AddWithValue("@AssignmentId", assignmentId);
-        cmd.Parameters.AddWithValue("@CompletionPercentage", request.CompletionPercentage);
-        cmd.Parameters.AddWithValue("@AssessmentScore", request.AssessmentScore);
-        cmd.Parameters.AddWithValue("@PassPercentage", passPercentage);
-        cmd.Parameters.AddWithValue("@CompletionDate", request.CompletionDate);
+        cmd.Parameters.AddWithValue("@CompletionPercentage", completionPercentage);
+        cmd.Parameters.AddWithValue("@CompletionDate", completionDate);
         cmd.Parameters.AddWithValue("@CertificateUrl", certificateUrl);
         cmd.Parameters.AddWithValue("@CreatedById", createdById);
         cmd.Parameters.AddWithValue("@CreatedByName", createdByName);
@@ -74,12 +72,63 @@ public class CertificateRepository : ICertificateRepository
 
         using var reader = await cmd.ExecuteReaderAsync();
 
-        if (await reader.ReadAsync())
-        {
-            return MapCertificateResponse(reader);
-        }
+        return await reader.ReadAsync() ? MapCertificateResponse(reader) : null;
+    }
 
-        return null;
+    // ─── Generate Assignment Certificate ─────────────────────────────────────
+
+    public async Task<CertificateResponse?> GenerateAssignmentCertificate(
+        string studentId,
+        string studentName,
+        string studentEmail,
+        int assignmentId,
+        string assignmentTitle,
+        decimal assessmentScore,
+        decimal passPercentage,
+        DateTime completionDate,
+        string certificateUrl,
+        string createdById,
+        string createdByName,
+        string createdByRole)
+    {
+        using var conn = GetConnection();
+
+        using var cmd = new SqlCommand("LMS.SP_GenerateAssignmentCertificate", conn);
+
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        var certificateIdParam =
+            new SqlParameter("@CertificateId", SqlDbType.NVarChar, 50)
+            {
+                Direction = ParameterDirection.Output
+            };
+
+        var credentialIdParam =
+            new SqlParameter("@CredentialId", SqlDbType.NVarChar, 50)
+            {
+                Direction = ParameterDirection.Output
+            };
+
+        cmd.Parameters.Add(certificateIdParam);
+        cmd.Parameters.Add(credentialIdParam);
+        cmd.Parameters.AddWithValue("@StudentId", studentId);
+        cmd.Parameters.AddWithValue("@StudentName", studentName);
+        cmd.Parameters.AddWithValue("@StudentEmail", studentEmail);
+        cmd.Parameters.AddWithValue("@AssignmentId", assignmentId);
+        cmd.Parameters.AddWithValue("@AssignmentTitle", assignmentTitle);
+        cmd.Parameters.AddWithValue("@AssessmentScore", assessmentScore);
+        cmd.Parameters.AddWithValue("@PassPercentage", passPercentage);
+        cmd.Parameters.AddWithValue("@CompletionDate", completionDate);
+        cmd.Parameters.AddWithValue("@CertificateUrl", certificateUrl);
+        cmd.Parameters.AddWithValue("@CreatedById", createdById);
+        cmd.Parameters.AddWithValue("@CreatedByName", createdByName);
+        cmd.Parameters.AddWithValue("@CreatedByRole", createdByRole);
+
+        await conn.OpenAsync();
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        return await reader.ReadAsync() ? MapCertificateResponse(reader) : null;
     }
 
     // ─── Get Student Certificates ────────────────────────────────────────────
@@ -154,11 +203,18 @@ public class CertificateRepository : ICertificateRepository
             {
                 CertificateId = reader["CertificateId"] as string ?? string.Empty,
                 CredentialId = reader["CredentialId"] as string ?? string.Empty,
+                CertificateType = reader["CertificateType"] as string ?? string.Empty,
                 StudentName = reader["StudentName"] as string ?? string.Empty,
-                CourseName = reader["CourseName"] as string ?? string.Empty,
-                CompletionPercentage = Convert.ToDecimal(reader["CompletionPercentage"]),
-                AssessmentScore = Convert.ToDecimal(reader["AssessmentScore"]),
-                PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
+                CourseName = reader["CourseName"] as string,
+                CompletionPercentage = reader["CompletionPercentage"] == DBNull.Value
+                    ? null
+                    : Convert.ToDecimal(reader["CompletionPercentage"]),
+                AssessmentScore = reader["AssessmentScore"] == DBNull.Value
+                    ? null
+                    : Convert.ToDecimal(reader["AssessmentScore"]),
+                PassPercentage = reader["PassPercentage"] == DBNull.Value
+                    ? null
+                    : Convert.ToDecimal(reader["PassPercentage"]),
                 CompletionDate = Convert.ToDateTime(reader["CompletionDate"]),
                 IssuedDate = Convert.ToDateTime(reader["IssuedDate"]),
                 IsValid = Convert.ToBoolean(reader["IsValid"])
@@ -177,17 +233,26 @@ public class CertificateRepository : ICertificateRepository
             Id = Convert.ToInt32(reader["Id"]),
             CertificateId = reader["CertificateId"] as string ?? string.Empty,
             CredentialId = reader["CredentialId"] as string ?? string.Empty,
+            CertificateType = reader["CertificateType"] as string ?? string.Empty,
             StudentId = reader["StudentId"] as string ?? string.Empty,
             StudentName = reader["StudentName"] as string ?? string.Empty,
             StudentEmail = reader["StudentEmail"] as string ?? string.Empty,
-            CourseId = Convert.ToInt32(reader["CourseId"]),
-            CourseName = reader["CourseName"] as string ?? string.Empty,
+            CourseId = reader["CourseId"] == DBNull.Value
+                ? null
+                : Convert.ToInt32(reader["CourseId"]),
+            CourseName = reader["CourseName"] as string,
             AssignmentId = reader["AssignmentId"] == DBNull.Value
-                ? 0
+                ? null
                 : Convert.ToInt32(reader["AssignmentId"]),
-            CompletionPercentage = Convert.ToDecimal(reader["CompletionPercentage"]),
-            AssessmentScore = Convert.ToDecimal(reader["AssessmentScore"]),
-            PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
+            CompletionPercentage = reader["CompletionPercentage"] == DBNull.Value
+                ? null
+                : Convert.ToDecimal(reader["CompletionPercentage"]),
+            AssessmentScore = reader["AssessmentScore"] == DBNull.Value
+                ? null
+                : Convert.ToDecimal(reader["AssessmentScore"]),
+            PassPercentage = reader["PassPercentage"] == DBNull.Value
+                ? null
+                : Convert.ToDecimal(reader["PassPercentage"]),
             CompletionDate = Convert.ToDateTime(reader["CompletionDate"]),
             IssuedDate = Convert.ToDateTime(reader["IssuedDate"]),
             CertificateUrl = reader["CertificateUrl"] as string ?? string.Empty,

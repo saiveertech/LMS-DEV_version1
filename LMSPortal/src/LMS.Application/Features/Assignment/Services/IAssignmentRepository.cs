@@ -30,4 +30,10 @@ public interface IAssignmentRepository
         string deletedById,
         string deletedByName,
         string deletedByRole);
+
+    // Replaces the whole question bank for this assignment. Returns how many
+    // questions were imported.
+    Task<int> ReplaceQuestions(int assignmentId, List<QuestionImportRow> questions);
+
+    Task<List<AssignmentQuestionResponse>> GetQuestions(int assignmentId);
 }

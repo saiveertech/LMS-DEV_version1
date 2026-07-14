@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.Json;
 using LMS.Application.Features.Assignment.DTOs;
 using LMS.Application.Features.Assignment.Services;
 using Microsoft.Data.SqlClient;
@@ -249,5 +250,65 @@ public class AssignmentRepository : IAssignmentRepository
         int rows = Convert.ToInt32(result);
 
         return rows > 0;
+    }
+
+    // ─── Replace Questions ────────────────────────────────────────────────────
+
+    public async Task<int> ReplaceQuestions(int assignmentId, List<QuestionImportRow> questions)
+    {
+        using var conn = GetConnection();
+
+        using var cmd = new SqlCommand("LMS.SP_ReplaceAssignmentQuestions", conn);
+
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        var questionsJson = JsonSerializer.Serialize(questions);
+
+        cmd.Parameters.AddWithValue("@AssignmentId", assignmentId);
+        cmd.Parameters.AddWithValue("@QuestionsJson", questionsJson);
+
+        await conn.OpenAsync();
+
+        var result = await cmd.ExecuteScalarAsync();
+
+        return result == null ? 0 : Convert.ToInt32(result);
+    }
+
+    // ─── Get Questions ────────────────────────────────────────────────────────
+
+    public async Task<List<AssignmentQuestionResponse>> GetQuestions(int assignmentId)
+    {
+        using var conn = GetConnection();
+
+        using var cmd = new SqlCommand("LMS.SP_GetAssignmentQuestions", conn);
+
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@AssignmentId", assignmentId);
+
+        await conn.OpenAsync();
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        var questions = new List<AssignmentQuestionResponse>();
+
+        while (await reader.ReadAsync())
+        {
+            questions.Add(new AssignmentQuestionResponse
+            {
+                QuestionId = Convert.ToInt32(reader["QuestionId"]),
+                AssignmentId = Convert.ToInt32(reader["AssignmentId"]),
+                QuestionText = reader["QuestionText"] as string ?? string.Empty,
+                OptionA = reader["OptionA"] as string ?? string.Empty,
+                OptionB = reader["OptionB"] as string ?? string.Empty,
+                OptionC = reader["OptionC"] as string ?? string.Empty,
+                OptionD = reader["OptionD"] as string ?? string.Empty,
+                CorrectOption = reader["CorrectOption"] as string ?? string.Empty,
+                Marks = Convert.ToDecimal(reader["Marks"]),
+                SortOrder = Convert.ToInt32(reader["SortOrder"])
+            });
+        }
+
+        return questions;
     }
 }

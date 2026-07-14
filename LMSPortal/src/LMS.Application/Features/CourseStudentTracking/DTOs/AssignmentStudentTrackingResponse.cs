@@ -1,6 +1,6 @@
 namespace LMS.Application.Features.CourseStudentTracking.DTOs;
 
-public class CourseStudentTrackingResponse
+public class AssignmentStudentTrackingResponse
 {
     public string StudentId { get; set; } = string.Empty;
 
@@ -8,9 +8,9 @@ public class CourseStudentTrackingResponse
 
     public string Email { get; set; } = string.Empty;
 
-    public int CourseId { get; set; }
+    public int AssignmentId { get; set; }
 
-    public string CourseTitle { get; set; } = string.Empty;
+    public string AssignmentTitle { get; set; } = string.Empty;
 
     public DateTime EnrollmentDate { get; set; }
 
@@ -20,17 +20,13 @@ public class CourseStudentTrackingResponse
     /// <summary>Set only when EnrollmentSource is TrainerAssigned.</summary>
     public string? AssignedByName { get; set; }
 
-    public string RegistrationStatus { get; set; } = string.Empty;
-
-    public string CourseStatus { get; set; } = string.Empty;
-
-    public decimal CompletionPercentage { get; set; }
-
-    public int CompletedLessons { get; set; }
-
-    public int TotalLessons { get; set; }
+    public string AssignmentStatus { get; set; } = string.Empty;
 
     public decimal? AssessmentScore { get; set; }
+
+    public decimal PassPercentage { get; set; }
+
+    public int Attempts { get; set; }
 
     public bool CertificateGenerated { get; set; }
 

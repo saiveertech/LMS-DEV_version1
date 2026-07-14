@@ -158,6 +158,22 @@ public class AssignmentService : IAssignmentService
                     "assignment-icons");
             }
 
+            // Parse the answer key up front so a malformed CSV fails the
+            // whole request before the assignment is even created.
+            List<QuestionImportRow>? parsedQuestions = null;
+
+            if (request.QuestionsCsv != null)
+            {
+                var (rows, parseError) = await ParseQuestionsCsv(request.QuestionsCsv);
+
+                if (parseError != null)
+                {
+                    return new ServiceResponse { Success = false, Message = parseError };
+                }
+
+                parsedQuestions = rows;
+            }
+
             var result = await _repo.CreateAssignment(
                 request,
                 introVideoUrl,
@@ -166,6 +182,13 @@ public class AssignmentService : IAssignmentService
                 createdById,
                 createdByName,
                 createdByRole);
+
+            // Auto-import the answer key — the trainer only ever uploads the
+            // CSV once, at create time (or re-uploads it on update below).
+            if (parsedQuestions != null && result is AssignmentResponse created)
+            {
+                await _repo.ReplaceQuestions(created.AssignmentId, parsedQuestions);
+            }
 
             return new ServiceResponse
             {
@@ -327,6 +350,22 @@ public class AssignmentService : IAssignmentService
                     "assignment-icons");
             }
 
+            // A re-uploaded CSV means the trainer wants to replace the
+            // answer key entirely.
+            List<QuestionImportRow>? parsedQuestions = null;
+
+            if (request.QuestionsCsv != null)
+            {
+                var (rows, parseError) = await ParseQuestionsCsv(request.QuestionsCsv);
+
+                if (parseError != null)
+                {
+                    return new ServiceResponse { Success = false, Message = parseError };
+                }
+
+                parsedQuestions = rows;
+            }
+
             var updated = await _repo.UpdateAssignment(
                 assignmentId,
                 request,
@@ -344,6 +383,11 @@ public class AssignmentService : IAssignmentService
                     Success = false,
                     Message = "Update Failed."
                 };
+            }
+
+            if (parsedQuestions != null)
+            {
+                await _repo.ReplaceQuestions(assignmentId, parsedQuestions);
             }
 
             return new ServiceResponse
@@ -452,5 +496,147 @@ public class AssignmentService : IAssignmentService
         }
 
         return null;
+    }
+
+    //=========================================
+    // Get Questions
+    //=========================================
+
+    public Task<List<AssignmentQuestionResponse>> GetQuestions(int assignmentId)
+    {
+        return _repo.GetQuestions(assignmentId);
+    }
+
+    public async Task<List<AssignmentQuestionForStudentResponse>> GetQuestionsForStudent(int assignmentId)
+    {
+        var questions = await _repo.GetQuestions(assignmentId);
+
+        return questions.Select(q => new AssignmentQuestionForStudentResponse
+        {
+            QuestionId = q.QuestionId,
+            QuestionText = q.QuestionText,
+            OptionA = q.OptionA,
+            OptionB = q.OptionB,
+            OptionC = q.OptionC,
+            OptionD = q.OptionD,
+            Marks = q.Marks,
+            SortOrder = q.SortOrder
+        }).ToList();
+    }
+
+    //=========================================
+    // CSV Answer-Key Parsing
+    //=========================================
+    // Expected header: QuestionText,OptionA,OptionB,OptionC,OptionD,CorrectOption,Marks
+    // Marks column is optional per row — defaults to 1 if omitted/blank.
+
+    private static async Task<(List<QuestionImportRow> Rows, string? Error)> ParseQuestionsCsv(IFormFile file)
+    {
+        using var reader = new StreamReader(file.OpenReadStream());
+
+        var text = await reader.ReadToEndAsync();
+
+        var lines = text.Split('\n')
+            .Select(l => l.TrimEnd('\r'))
+            .Where(l => !string.IsNullOrWhiteSpace(l))
+            .ToList();
+
+        if (lines.Count <= 1)
+        {
+            return (new List<QuestionImportRow>(), "Questions CSV must contain a header row plus at least one question.");
+        }
+
+        var rows = new List<QuestionImportRow>();
+
+        for (int i = 1; i < lines.Count; i++)
+        {
+            var fields = SplitCsvLine(lines[i]);
+            var lineNumber = i + 1;
+
+            if (fields.Count < 6)
+            {
+                return (rows, $"CSV line {lineNumber}: expected at least 6 columns (QuestionText, OptionA-D, CorrectOption), got {fields.Count}.");
+            }
+
+            var correctOption = fields[5].Trim().ToUpperInvariant();
+
+            if (correctOption != "A" && correctOption != "B" && correctOption != "C" && correctOption != "D")
+            {
+                return (rows, $"CSV line {lineNumber}: CorrectOption must be A, B, C, or D — got '{fields[5]}'.");
+            }
+
+            decimal marks = 1;
+
+            if (fields.Count >= 7 && !string.IsNullOrWhiteSpace(fields[6]))
+            {
+                if (!decimal.TryParse(fields[6], out marks) || marks <= 0)
+                {
+                    return (rows, $"CSV line {lineNumber}: Marks must be a positive number — got '{fields[6]}'.");
+                }
+            }
+
+            rows.Add(new QuestionImportRow
+            {
+                QuestionText = fields[0].Trim(),
+                OptionA = fields[1].Trim(),
+                OptionB = fields[2].Trim(),
+                OptionC = fields[3].Trim(),
+                OptionD = fields[4].Trim(),
+                CorrectOption = correctOption,
+                Marks = marks
+            });
+        }
+
+        return (rows, null);
+    }
+
+    // Minimal quote-aware CSV splitter — handles quoted fields containing commas.
+    private static List<string> SplitCsvLine(string line)
+    {
+        var fields = new List<string>();
+        var current = new System.Text.StringBuilder();
+        bool inQuotes = false;
+
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+
+            if (inQuotes)
+            {
+                if (c == '"')
+                {
+                    if (i + 1 < line.Length && line[i + 1] == '"')
+                    {
+                        current.Append('"');
+                        i++;
+                    }
+                    else
+                    {
+                        inQuotes = false;
+                    }
+                }
+                else
+                {
+                    current.Append(c);
+                }
+            }
+            else if (c == '"')
+            {
+                inQuotes = true;
+            }
+            else if (c == ',')
+            {
+                fields.Add(current.ToString());
+                current.Clear();
+            }
+            else
+            {
+                current.Append(c);
+            }
+        }
+
+        fields.Add(current.ToString());
+
+        return fields;
     }
 }

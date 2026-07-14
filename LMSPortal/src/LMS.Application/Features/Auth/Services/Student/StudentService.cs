@@ -1,16 +1,27 @@
 using System.ComponentModel.DataAnnotations;
 using LMS.Application.Common;
+using LMS.Application.Features.Assignment.DTOs;
+using LMS.Application.Features.Assignment.Services;
 using LMS.Application.Features.Auth.DTOs;
+using LMS.Application.Features.Certificate.Services;
+using LMS.Application.Features.CourseStudentTracking.DTOs;
 
 namespace LMS.Application.Features.Auth.Services.Student;
 
 public class StudentService : IStudentService
 {
     private readonly IStudentRepository _repo;
+    private readonly ICertificateService _certificateService;
+    private readonly IAssignmentRepository _assignmentRepo;
 
-    public StudentService(IStudentRepository repo)
+    public StudentService(
+        IStudentRepository repo,
+        ICertificateService certificateService,
+        IAssignmentRepository assignmentRepo)
     {
         _repo = repo;
+        _certificateService = certificateService;
+        _assignmentRepo = assignmentRepo;
     }
 
     //=========================================
@@ -351,5 +362,349 @@ public class StudentService : IStudentService
     public async Task<object?> GetEnrolledAssignments(string studentId)
     {
         return await _repo.GetEnrolledAssignments(studentId);
+    }
+
+    //=========================================
+    // Submit Assignment Attempt
+    //=========================================
+
+    public async Task<ServiceResponse> SubmitAssignmentAttempt(SubmitAssignmentAttemptRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.StudentId))
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Student ID is required."
+                };
+            }
+
+            if (request.AssignmentId <= 0)
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "A valid Assignment ID is required."
+                };
+            }
+
+            if (request.Score < 0 || request.Score > 100)
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "Score must be between 0 and 100."
+                };
+            }
+
+            var result = await _repo.SubmitAssignmentAttempt(request);
+
+            var message = "Assignment attempt recorded successfully.";
+
+            var resultType = result.GetType();
+            var assignmentStatus = resultType.GetProperty("AssignmentStatus")?.GetValue(result) as string;
+
+            // Auto-issue the assignment certificate the instant a passing
+            // score is reached — no manual trainer/admin trigger. Idempotent:
+            // a later attempt after already passing just fails the
+            // "already exists" check inside GenerateAssignmentCertificateAsync
+            // and is ignored here.
+            if (assignmentStatus == "Completed")
+            {
+                var assessmentScore = Convert.ToDecimal(
+                    resultType.GetProperty("AssessmentScore")?.GetValue(result) ?? 0m);
+
+                var certResult = await _certificateService.GenerateAssignmentCertificateAsync(
+                    request.StudentId,
+                    request.AssignmentId,
+                    assessmentScore,
+                    DateTime.UtcNow,
+                    "system",
+                    "System",
+                    "System");
+
+                message = certResult.Success
+                    ? "Assignment attempt recorded — passed and certificate issued."
+                    : "Assignment attempt recorded — passed.";
+            }
+
+            return new ServiceResponse
+            {
+                Success = true,
+                Message = message,
+                Data = result
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ServiceResponse
+            {
+                Success = false,
+                Message = ex.Message
+            };
+        }
+    }
+
+    //=========================================
+    // Assign Course To Student (trainer/admin-initiated)
+    //=========================================
+
+    public async Task<ServiceResponse> AssignCourseToStudent(
+        string studentId, int courseId,
+        string assignedById, string assignedByName, string assignedByRole)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(studentId))
+            {
+                return new ServiceResponse { Success = false, Message = "Student ID is required." };
+            }
+
+            if (courseId <= 0)
+            {
+                return new ServiceResponse { Success = false, Message = "A valid Course ID is required." };
+            }
+
+            var enrollment = await _repo.EnrollCourse(
+                new EnrollCourseRequest { StudentId = studentId, CourseId = courseId });
+
+            await _repo.RecordCourseAssignment(
+                studentId, courseId, assignedById, assignedByName, assignedByRole);
+
+            return new ServiceResponse
+            {
+                Success = true,
+                Message = "Course assigned to student successfully.",
+                Data = enrollment
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ServiceResponse { Success = false, Message = ex.Message };
+        }
+    }
+
+    //=========================================
+    // Assign Assignment To Student (trainer/admin-initiated)
+    //=========================================
+
+    public async Task<ServiceResponse> AssignAssignmentToStudent(
+        string studentId, int assignmentId,
+        string assignedById, string assignedByName, string assignedByRole)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(studentId))
+            {
+                return new ServiceResponse { Success = false, Message = "Student ID is required." };
+            }
+
+            if (assignmentId <= 0)
+            {
+                return new ServiceResponse { Success = false, Message = "A valid Assignment ID is required." };
+            }
+
+            var enrollment = await _repo.EnrollAssignment(
+                new EnrollAssignmentRequest { StudentId = studentId, AssignmentId = assignmentId });
+
+            await _repo.RecordAssignmentAllocation(
+                studentId, assignmentId, assignedById, assignedByName, assignedByRole);
+
+            return new ServiceResponse
+            {
+                Success = true,
+                Message = "Assignment assigned to student successfully.",
+                Data = enrollment
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ServiceResponse { Success = false, Message = ex.Message };
+        }
+    }
+
+    //=========================================
+    // Complete Course Slide
+    //=========================================
+
+    public async Task<ServiceResponse> CompleteCourseSlide(string studentId, int slideId)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(studentId))
+            {
+                return new ServiceResponse { Success = false, Message = "Student ID is required." };
+            }
+
+            if (slideId <= 0)
+            {
+                return new ServiceResponse { Success = false, Message = "A valid Slide ID is required." };
+            }
+
+            var result = await _repo.CompleteCourseSlide(studentId, slideId);
+
+            if (result == null)
+            {
+                return new ServiceResponse { Success = false, Message = "Slide or enrollment not found." };
+            }
+
+            var message = "Slide marked complete.";
+
+            // Auto-issue the course certificate the instant completion hits
+            // 100% — same idempotent pattern as the manual progress endpoint.
+            if (result.CourseStatus == "Completed")
+            {
+                var certResult = await _certificateService.GenerateCourseCertificateAsync(
+                    studentId,
+                    result.CourseId,
+                    result.CompletionPercentage,
+                    DateTime.UtcNow,
+                    "system",
+                    "System",
+                    "System");
+
+                message = certResult.Success
+                    ? "Slide marked complete — course finished and certificate issued."
+                    : "Slide marked complete — course finished.";
+            }
+
+            return new ServiceResponse
+            {
+                Success = true,
+                Message = message,
+                Data = result
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ServiceResponse { Success = false, Message = ex.Message };
+        }
+    }
+
+    //=========================================
+    // Get Course Resume Point
+    //=========================================
+
+    public Task<List<CourseSlideProgressResponse>> GetCourseResume(string studentId, int courseId)
+    {
+        return _repo.GetCourseResume(studentId, courseId);
+    }
+
+    //=========================================
+    // Submit Assignment Answers (real evaluation against the answer key)
+    //=========================================
+
+    public async Task<ServiceResponse> SubmitAssignmentAnswers(SubmitAssignmentAnswersRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.StudentId))
+            {
+                return new ServiceResponse { Success = false, Message = "Student ID is required." };
+            }
+
+            if (request.AssignmentId <= 0)
+            {
+                return new ServiceResponse { Success = false, Message = "A valid Assignment ID is required." };
+            }
+
+            if (request.Answers.Count == 0)
+            {
+                return new ServiceResponse { Success = false, Message = "At least one answer is required." };
+            }
+
+            var questions = await _assignmentRepo.GetQuestions(request.AssignmentId);
+
+            if (questions.Count == 0)
+            {
+                return new ServiceResponse
+                {
+                    Success = false,
+                    Message = "No answer key configured for this assignment."
+                };
+            }
+
+            var submittedByQuestion = request.Answers.ToDictionary(a => a.QuestionId, a => a.SelectedOption);
+
+            var results = new List<AssignmentAnswerResultItem>();
+            var answersToSave = new List<(int QuestionId, string SelectedOption, bool IsCorrect)>();
+
+            decimal correctMarks = 0;
+            decimal totalMarks = 0;
+            int correctCount = 0;
+
+            foreach (var question in questions)
+            {
+                totalMarks += question.Marks;
+
+                submittedByQuestion.TryGetValue(question.QuestionId, out var selectedOption);
+
+                var isCorrect = !string.IsNullOrWhiteSpace(selectedOption) &&
+                    string.Equals(selectedOption.Trim(), question.CorrectOption, StringComparison.OrdinalIgnoreCase);
+
+                if (isCorrect)
+                {
+                    correctMarks += question.Marks;
+                    correctCount++;
+                }
+
+                results.Add(new AssignmentAnswerResultItem
+                {
+                    QuestionId = question.QuestionId,
+                    SelectedOption = selectedOption,
+                    CorrectOption = question.CorrectOption,
+                    IsCorrect = isCorrect
+                });
+
+                // Unanswered questions aren't recorded as a submitted answer row.
+                if (!string.IsNullOrWhiteSpace(selectedOption))
+                {
+                    answersToSave.Add((question.QuestionId, selectedOption.Trim().ToUpperInvariant(), isCorrect));
+                }
+            }
+
+            var scorePercentage = totalMarks > 0
+                ? Math.Round(correctMarks / totalMarks * 100, 2)
+                : 0;
+
+            var attemptNumber = await _repo.SaveStudentAnswers(
+                request.StudentId, request.AssignmentId, answersToSave);
+
+            // Reuse the existing attempt flow entirely — best-score tracking,
+            // pass-status derivation, and certificate auto-trigger all happen
+            // exactly as they would for a directly-submitted score.
+            var attemptResult = await SubmitAssignmentAttempt(new SubmitAssignmentAttemptRequest
+            {
+                StudentId = request.StudentId,
+                AssignmentId = request.AssignmentId,
+                Score = scorePercentage
+            });
+
+            var response = new SubmitAssignmentAnswersResponse
+            {
+                AssignmentId = request.AssignmentId,
+                AttemptNumber = attemptNumber,
+                CorrectCount = correctCount,
+                TotalQuestions = questions.Count,
+                CorrectMarks = correctMarks,
+                TotalMarks = totalMarks,
+                ScorePercentage = scorePercentage,
+                Passed = attemptResult.Message.Contains("passed", StringComparison.OrdinalIgnoreCase),
+                Results = results
+            };
+
+            return new ServiceResponse
+            {
+                Success = true,
+                Message = attemptResult.Message,
+                Data = response
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ServiceResponse { Success = false, Message = ex.Message };
+        }
     }
 }

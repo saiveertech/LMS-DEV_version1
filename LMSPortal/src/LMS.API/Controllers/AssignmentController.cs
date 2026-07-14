@@ -140,4 +140,22 @@ public class AssignmentController : ControllerBase
 
         return Ok(result);
     }
+
+    // ─── Get Questions (trainer/admin — includes correct answers) ───────────
+
+    [HttpGet("{assignmentId:int}/questions")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetQuestions(int assignmentId)
+    {
+        var questions = await _service.GetQuestions(assignmentId);
+
+        return Ok(new
+        {
+            Success = true,
+            Message = questions.Count > 0
+                ? $"Found {questions.Count} question(s)."
+                : "No questions found — has the answer-key CSV been uploaded?",
+            Data = questions
+        });
+    }
 }

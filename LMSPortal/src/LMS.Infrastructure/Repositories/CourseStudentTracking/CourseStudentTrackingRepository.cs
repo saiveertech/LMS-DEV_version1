@@ -58,6 +58,101 @@ public class CourseStudentTrackingRepository : ICourseStudentTrackingRepository
         return students;
     }
 
+    // ─── Update Course Student Progress ──────────────────────────────────────
+
+    public async Task<CourseStudentTrackingResponse?> UpdateCourseStudentProgress(
+        int courseId,
+        string studentId,
+        UpdateCourseProgressRequest request)
+    {
+        using var conn = GetConnection();
+
+        using var cmd = new SqlCommand("LMS.SP_UpdateCourseStudentProgress", conn);
+
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@CourseId", courseId);
+        cmd.Parameters.AddWithValue("@StudentId", studentId);
+        cmd.Parameters.AddWithValue("@CompletedLessons", request.CompletedLessons);
+        cmd.Parameters.AddWithValue(
+            "@TotalLessons",
+            (object?)request.TotalLessons ?? DBNull.Value);
+
+        await conn.OpenAsync();
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        if (await reader.ReadAsync())
+        {
+            return MapCourseStudentTrackingResponse(reader);
+        }
+
+        return null;
+    }
+
+    // ─── Get Assignment Students ─────────────────────────────────────────────
+
+    public async Task<List<AssignmentStudentTrackingResponse>> GetAssignmentStudents(
+        int assignmentId,
+        CourseStudentTrackingFilter filter)
+    {
+        using var conn = GetConnection();
+
+        using var cmd = new SqlCommand("LMS.SP_GetAssignmentStudentTracking", conn);
+
+        cmd.CommandType = CommandType.StoredProcedure;
+
+        cmd.Parameters.AddWithValue("@AssignmentId", assignmentId);
+        cmd.Parameters.AddWithValue(
+            "@Status",
+            (object?)filter.Status ?? DBNull.Value);
+        cmd.Parameters.AddWithValue(
+            "@StudentId",
+            (object?)filter.StudentId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue(
+            "@CertificateGenerated",
+            (object?)filter.CertificateGenerated ?? DBNull.Value);
+
+        await conn.OpenAsync();
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        var students = new List<AssignmentStudentTrackingResponse>();
+
+        while (await reader.ReadAsync())
+        {
+            students.Add(new AssignmentStudentTrackingResponse
+            {
+                StudentId = reader["StudentId"] as string ?? string.Empty,
+                StudentName = reader["StudentName"] as string ?? string.Empty,
+                Email = reader["Email"] as string ?? string.Empty,
+                AssignmentId = Convert.ToInt32(reader["AssignmentId"]),
+                AssignmentTitle = reader["AssignmentTitle"] as string ?? string.Empty,
+                EnrollmentDate = Convert.ToDateTime(reader["EnrollmentDate"]),
+                EnrollmentSource = reader["EnrollmentSource"] as string ?? string.Empty,
+                AssignedByName = reader["AssignedByName"] as string,
+                AssignmentStatus = reader["AssignmentStatus"] as string ?? string.Empty,
+                AssessmentScore = reader["AssessmentScore"] == DBNull.Value
+                    ? null
+                    : Convert.ToDecimal(reader["AssessmentScore"]),
+                PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
+                Attempts = Convert.ToInt32(reader["Attempts"]),
+                CertificateGenerated = Convert.ToBoolean(reader["CertificateGenerated"]),
+                CertificateId = reader["CertificateId"] as string,
+                CertificateIssueDate = reader["CertificateIssueDate"] == DBNull.Value
+                    ? null
+                    : Convert.ToDateTime(reader["CertificateIssueDate"]),
+                CertificateUrl = reader["CertificateUrl"] as string,
+                CreatedAt = Convert.ToDateTime(reader["CreatedAt"]),
+                UpdatedDate = reader["UpdatedDate"] == DBNull.Value
+                    ? null
+                    : Convert.ToDateTime(reader["UpdatedDate"])
+            });
+        }
+
+        return students;
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private static CourseStudentTrackingResponse MapCourseStudentTrackingResponse(
@@ -71,6 +166,8 @@ public class CourseStudentTrackingRepository : ICourseStudentTrackingRepository
             CourseId = Convert.ToInt32(reader["CourseId"]),
             CourseTitle = reader["CourseTitle"] as string ?? string.Empty,
             EnrollmentDate = Convert.ToDateTime(reader["EnrollmentDate"]),
+            EnrollmentSource = reader["EnrollmentSource"] as string ?? string.Empty,
+            AssignedByName = reader["AssignedByName"] as string,
             RegistrationStatus = reader["RegistrationStatus"] as string ?? string.Empty,
             CourseStatus = reader["CourseStatus"] as string ?? string.Empty,
             CompletionPercentage = Convert.ToDecimal(reader["CompletionPercentage"]),

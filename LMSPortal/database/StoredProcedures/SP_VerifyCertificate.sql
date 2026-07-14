@@ -9,6 +9,7 @@ BEGIN
     SELECT
         CertificateId,
         CredentialId,
+        CertificateType,
         StudentName,
         CourseName,
         CompletionPercentage,

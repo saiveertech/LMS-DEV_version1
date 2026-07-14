@@ -1,6 +1,8 @@
 using System.Data;
+using System.Text.Json;
 using LMS.Application.Features.Auth.DTOs;
 using LMS.Application.Features.Auth.Services.Student;
+using LMS.Application.Features.CourseStudentTracking.DTOs;
 using LMS.Infrastructure.Email;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
@@ -347,6 +349,7 @@ public async Task<object?> GetEnrolledAssignments(string studentId)
             AssessmentScore = reader["AssessmentScore"] == DBNull.Value
                 ? (decimal?)null
                 : Convert.ToDecimal(reader["AssessmentScore"]),
+            Attempts = Convert.ToInt32(reader["Attempts"]),
             CreatedAt = Convert.ToDateTime(reader["CreatedAt"]),
             UpdatedDate = reader["UpdatedDate"] == DBNull.Value
                 ? (DateTime?)null
@@ -355,6 +358,202 @@ public async Task<object?> GetEnrolledAssignments(string studentId)
     }
 
     return enrollments;
+}
+
+public async Task<object> SubmitAssignmentAttempt(SubmitAssignmentAttemptRequest request)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_SubmitAssignmentAttempt", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    cmd.Parameters.AddWithValue("@StudentId", request.StudentId);
+    cmd.Parameters.AddWithValue("@AssignmentId", request.AssignmentId);
+    cmd.Parameters.AddWithValue("@Score", request.Score);
+
+    await conn.OpenAsync();
+
+    using var reader = await cmd.ExecuteReaderAsync();
+
+    if (await reader.ReadAsync())
+    {
+        return new
+        {
+            EnrollmentId = reader["EnrollmentId"],
+            StudentId = reader["StudentId"],
+            AssignmentId = reader["AssignmentId"],
+            AssignmentTitle = reader["AssignmentTitle"],
+            PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
+            EnrollmentDate = Convert.ToDateTime(reader["EnrollmentDate"]),
+            AssignmentStatus = reader["AssignmentStatus"],
+            AssessmentScore = Convert.ToDecimal(reader["AssessmentScore"]),
+            Attempts = Convert.ToInt32(reader["Attempts"]),
+            CreatedAt = Convert.ToDateTime(reader["CreatedAt"]),
+            UpdatedDate = reader["UpdatedDate"] == DBNull.Value
+                ? (DateTime?)null
+                : Convert.ToDateTime(reader["UpdatedDate"])
+        };
+    }
+
+    throw new InvalidOperationException("Failed to record assignment attempt.");
+}
+
+public async Task RecordCourseAssignment(
+    string studentId, int courseId,
+    string assignedById, string assignedByName, string assignedByRole)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_RecordCourseAssignment", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
+    cmd.Parameters.AddWithValue("@CourseId", courseId);
+    cmd.Parameters.AddWithValue("@AssignedById", assignedById);
+    cmd.Parameters.AddWithValue("@AssignedByName", assignedByName);
+    cmd.Parameters.AddWithValue("@AssignedByRole", assignedByRole);
+
+    await conn.OpenAsync();
+
+    await cmd.ExecuteNonQueryAsync();
+}
+
+public async Task RecordAssignmentAllocation(
+    string studentId, int assignmentId,
+    string assignedById, string assignedByName, string assignedByRole)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_RecordAssignmentAllocation", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
+    cmd.Parameters.AddWithValue("@AssignmentId", assignmentId);
+    cmd.Parameters.AddWithValue("@AssignedById", assignedById);
+    cmd.Parameters.AddWithValue("@AssignedByName", assignedByName);
+    cmd.Parameters.AddWithValue("@AssignedByRole", assignedByRole);
+
+    await conn.OpenAsync();
+
+    await cmd.ExecuteNonQueryAsync();
+}
+
+public async Task<CourseStudentTrackingResponse?> CompleteCourseSlide(string studentId, int slideId)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_CompleteCourseSlide", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
+    cmd.Parameters.AddWithValue("@SlideId", slideId);
+
+    await conn.OpenAsync();
+
+    using var reader = await cmd.ExecuteReaderAsync();
+
+    if (await reader.ReadAsync())
+    {
+        return new CourseStudentTrackingResponse
+        {
+            StudentId = reader["StudentId"] as string ?? string.Empty,
+            StudentName = reader["StudentName"] as string ?? string.Empty,
+            Email = reader["Email"] as string ?? string.Empty,
+            CourseId = Convert.ToInt32(reader["CourseId"]),
+            CourseTitle = reader["CourseTitle"] as string ?? string.Empty,
+            EnrollmentDate = Convert.ToDateTime(reader["EnrollmentDate"]),
+            EnrollmentSource = reader["EnrollmentSource"] as string ?? string.Empty,
+            AssignedByName = reader["AssignedByName"] as string,
+            RegistrationStatus = reader["RegistrationStatus"] as string ?? string.Empty,
+            CourseStatus = reader["CourseStatus"] as string ?? string.Empty,
+            CompletionPercentage = Convert.ToDecimal(reader["CompletionPercentage"]),
+            CompletedLessons = Convert.ToInt32(reader["CompletedLessons"]),
+            TotalLessons = Convert.ToInt32(reader["TotalLessons"]),
+            AssessmentScore = reader["AssessmentScore"] == DBNull.Value
+                ? null
+                : Convert.ToDecimal(reader["AssessmentScore"]),
+            CertificateGenerated = Convert.ToBoolean(reader["CertificateGenerated"]),
+            CertificateId = reader["CertificateId"] as string,
+            CertificateIssueDate = reader["CertificateIssueDate"] == DBNull.Value
+                ? null
+                : Convert.ToDateTime(reader["CertificateIssueDate"]),
+            CertificateUrl = reader["CertificateUrl"] as string,
+            CreatedAt = Convert.ToDateTime(reader["CreatedAt"]),
+            UpdatedDate = reader["UpdatedDate"] == DBNull.Value
+                ? null
+                : Convert.ToDateTime(reader["UpdatedDate"])
+        };
+    }
+
+    return null;
+}
+
+public async Task<List<CourseSlideProgressResponse>> GetCourseResume(string studentId, int courseId)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_GetCourseResume", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
+    cmd.Parameters.AddWithValue("@CourseId", courseId);
+
+    await conn.OpenAsync();
+
+    using var reader = await cmd.ExecuteReaderAsync();
+
+    var slides = new List<CourseSlideProgressResponse>();
+
+    while (await reader.ReadAsync())
+    {
+        slides.Add(new CourseSlideProgressResponse
+        {
+            SlideId = Convert.ToInt32(reader["SlideId"]),
+            Title = reader["Title"] as string ?? string.Empty,
+            MediaType = reader["MediaType"] as string ?? string.Empty,
+            MediaUrl = reader["MediaUrl"] as string ?? string.Empty,
+            SortOrder = Convert.ToInt32(reader["SortOrder"]),
+            IsCompleted = Convert.ToBoolean(reader["IsCompleted"]),
+            CompletedAt = reader["CompletedAt"] == DBNull.Value
+                ? null
+                : Convert.ToDateTime(reader["CompletedAt"])
+        });
+    }
+
+    return slides;
+}
+
+public async Task<int> SaveStudentAnswers(
+    string studentId, int assignmentId,
+    List<(int QuestionId, string SelectedOption, bool IsCorrect)> answers)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_SaveStudentAnswers", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    var answersJson = JsonSerializer.Serialize(answers.Select(a => new
+    {
+        a.QuestionId,
+        a.SelectedOption,
+        a.IsCorrect
+    }));
+
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
+    cmd.Parameters.AddWithValue("@AssignmentId", assignmentId);
+    cmd.Parameters.AddWithValue("@AnswersJson", answersJson);
+
+    await conn.OpenAsync();
+
+    var result = await cmd.ExecuteScalarAsync();
+
+    return result == null ? 1 : Convert.ToInt32(result);
 }
 
 }

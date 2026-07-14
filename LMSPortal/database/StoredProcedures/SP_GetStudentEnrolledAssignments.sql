@@ -19,6 +19,7 @@ BEGIN
         e.EnrollmentDate,
         e.AssignmentStatus,
         e.AssessmentScore,
+        e.Attempts,
         e.CreatedAt,
         e.UpdatedDate
     FROM LMS.StudentAssignmentEnrollments e

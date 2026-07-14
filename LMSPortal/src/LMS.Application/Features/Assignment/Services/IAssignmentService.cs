@@ -25,4 +25,10 @@ public interface IAssignmentService
         string deletedById,
         string deletedByName,
         string deletedByRole);
+
+    // Trainer/admin view — includes CorrectOption.
+    Task<List<AssignmentQuestionResponse>> GetQuestions(int assignmentId);
+
+    // Student view — CorrectOption stripped out.
+    Task<List<AssignmentQuestionForStudentResponse>> GetQuestionsForStudent(int assignmentId);
 }
