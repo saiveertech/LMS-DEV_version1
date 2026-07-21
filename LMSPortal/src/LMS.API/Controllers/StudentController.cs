@@ -220,6 +220,87 @@ public class StudentController : ControllerBase
         });
     }
 
+    // ─── Recommended Courses ──────────────────────────────────────────────────
+    // Ranked by tag overlap with the student's AreaOfInterest and with their
+    // enrollment/assignment history. Excludes courses already enrolled/assigned.
+
+    [HttpGet("recommended-courses/{studentId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetRecommendedCourses(
+        string studentId,
+        [FromQuery] int topN = 10)
+    {
+        if (string.IsNullOrWhiteSpace(studentId))
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = "Student ID is required."
+            });
+        }
+
+        try
+        {
+            var result = await _service.GetRecommendedCourses(studentId, topN);
+
+            return Ok(new
+            {
+                Success = true,
+                StudentId = studentId,
+                Data = result
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+    }
+
+    // ─── Recommended Assignments ─────────────────────────────────────────────
+    // Same tag-overlap scoring as recommended-courses, for assignments.
+
+    [HttpGet("recommended-assignments/{studentId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetRecommendedAssignments(
+        string studentId,
+        [FromQuery] int topN = 10)
+    {
+        if (string.IsNullOrWhiteSpace(studentId))
+        {
+            return BadRequest(new
+            {
+                Success = false,
+                Message = "Student ID is required."
+            });
+        }
+
+        try
+        {
+            var result = await _service.GetRecommendedAssignments(studentId, topN);
+
+            return Ok(new
+            {
+                Success = true,
+                StudentId = studentId,
+                Data = result
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+    }
+
     // ─── Submit Assignment Attempt ───────────────────────────────────────────
     // AssessmentScore keeps the best score across attempts; AssignmentStatus
     // auto-flips to Completed once a passing score is reached and never

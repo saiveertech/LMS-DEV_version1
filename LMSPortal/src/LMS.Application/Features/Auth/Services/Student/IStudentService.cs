@@ -41,6 +41,10 @@ public interface IStudentService
 
     Task<object?> GetAssignedAssignments(string studentId);
 
+    Task<object?> GetRecommendedCourses(string studentId, int topN);
+
+    Task<object?> GetRecommendedAssignments(string studentId, int topN);
+
     Task<ServiceResponse> CompleteCourseSlide(string studentId, int slideId);
 
     Task<List<CourseSlideProgressResponse>> GetCourseResume(string studentId, int courseId);

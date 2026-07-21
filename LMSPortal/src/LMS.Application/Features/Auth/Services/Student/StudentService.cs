@@ -540,6 +540,24 @@ public class StudentService : IStudentService
     }
 
     //=========================================
+    // Get Recommended Courses for a Student
+    //=========================================
+
+    public async Task<object?> GetRecommendedCourses(string studentId, int topN)
+    {
+        return await _repo.GetRecommendedCourses(studentId, topN);
+    }
+
+    //=========================================
+    // Get Recommended Assignments for a Student
+    //=========================================
+
+    public async Task<object?> GetRecommendedAssignments(string studentId, int topN)
+    {
+        return await _repo.GetRecommendedAssignments(studentId, topN);
+    }
+
+    //=========================================
     // Complete Course Slide
     //=========================================
 

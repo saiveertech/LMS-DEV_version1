@@ -605,6 +605,79 @@ public async Task<List<CourseSlideProgressResponse>> GetCourseResume(string stud
     return slides;
 }
 
+public async Task<object?> GetRecommendedCourses(string studentId, int topN)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_GetRecommendedCoursesForStudent", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
+    cmd.Parameters.AddWithValue("@TopN", topN);
+
+    await conn.OpenAsync();
+
+    using var reader = await cmd.ExecuteReaderAsync();
+
+    var recommendations = new List<object>();
+
+    while (await reader.ReadAsync())
+    {
+        recommendations.Add(new
+        {
+            CourseId = reader["CourseId"],
+            CourseTitle = reader["CourseTitle"],
+            CourseDescription = reader["CourseDescription"] as string,
+            CourseIconUrl = reader["CourseIconUrl"] as string,
+            Tags = reader["Tags"] as string,
+            CompletionTimeSeconds = Convert.ToInt32(reader["CompletionTimeSeconds"]),
+            InterestScore = Convert.ToInt32(reader["InterestScore"]),
+            HistoryScore = Convert.ToInt32(reader["HistoryScore"]),
+            MatchScore = Convert.ToInt32(reader["MatchScore"])
+        });
+    }
+
+    return recommendations;
+}
+
+public async Task<object?> GetRecommendedAssignments(string studentId, int topN)
+{
+    using var conn = GetConnection();
+
+    using var cmd = new SqlCommand("LMS.SP_GetRecommendedAssignmentsForStudent", conn);
+
+    cmd.CommandType = CommandType.StoredProcedure;
+
+    cmd.Parameters.AddWithValue("@StudentId", studentId);
+    cmd.Parameters.AddWithValue("@TopN", topN);
+
+    await conn.OpenAsync();
+
+    using var reader = await cmd.ExecuteReaderAsync();
+
+    var recommendations = new List<object>();
+
+    while (await reader.ReadAsync())
+    {
+        recommendations.Add(new
+        {
+            AssignmentId = reader["AssignmentId"],
+            AssignmentTitle = reader["AssignmentTitle"],
+            AssignmentDescription = reader["AssignmentDescription"] as string,
+            AssessmentIconUrl = reader["AssessmentIconUrl"] as string,
+            Tags = reader["Tags"] as string,
+            CompletionTimeSeconds = Convert.ToInt32(reader["CompletionTimeSeconds"]),
+            PassPercentage = Convert.ToDecimal(reader["PassPercentage"]),
+            InterestScore = Convert.ToInt32(reader["InterestScore"]),
+            HistoryScore = Convert.ToInt32(reader["HistoryScore"]),
+            MatchScore = Convert.ToInt32(reader["MatchScore"])
+        });
+    }
+
+    return recommendations;
+}
+
 public async Task<int> SaveStudentAnswers(
     string studentId, int assignmentId,
     List<(int QuestionId, string SelectedOption, bool IsCorrect)> answers)

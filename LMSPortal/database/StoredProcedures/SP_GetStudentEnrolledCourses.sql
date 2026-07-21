@@ -1,4 +1,4 @@
-CREATE PROCEDURE LMS.SP_GetStudentEnrolledCourses
+ALTER PROCEDURE LMS.SP_GetStudentEnrolledCourses
 (
     @StudentId NVARCHAR(50)
 )

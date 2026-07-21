@@ -34,6 +34,13 @@ public interface IStudentRepository
 
     Task<object?> GetAssignedAssignments(string studentId);
 
+    // Active courses not yet enrolled/assigned, ranked by tag overlap with the
+    // student's AreaOfInterest and with courses in their enrollment/assignment history.
+    Task<object?> GetRecommendedCourses(string studentId, int topN);
+
+    // Same scoring, for assignments not yet enrolled/assigned.
+    Task<object?> GetRecommendedAssignments(string studentId, int topN);
+
     // Throws if the slide or the student's course enrollment isn't found.
     Task<CourseStudentTrackingResponse?> CompleteCourseSlide(string studentId, int slideId);
 
